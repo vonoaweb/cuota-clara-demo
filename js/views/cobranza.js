@@ -11,7 +11,7 @@ CC.vistas.cobranza = {
   },
   acciones: function (ctx) {
     var faltan = CC.Model.faltanCuota(ctx.periodo).length;
-    var lista = [{ texto: 'Registrar pago', icono: 'más', clase: 'btn', accion: 'pago' }];
+    var lista = [{ texto: 'Registrar pago', icono: 'mas', clase: 'btn', accion: 'pago' }];
     if (faltan > 0) {
       lista.push({
         texto: 'Generar cuotas (' + faltan + ')',

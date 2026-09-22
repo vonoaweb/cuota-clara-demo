@@ -10,7 +10,7 @@ CC.vistas.panel = {
 
   acciones: function () {
     return [
-      { texto: 'Registrar pago', icono: 'más', clase: 'btn', accion: 'pago' },
+      { texto: 'Registrar pago', icono: 'mas', clase: 'btn', accion: 'pago' },
       { texto: 'Registrar gasto', icono: 'gastos', clase: 'btn btn--ghost', accion: 'gasto' }
     ];
   },

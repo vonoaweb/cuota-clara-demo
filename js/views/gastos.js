@@ -10,7 +10,7 @@ CC.vistas.gastos = {
     return CC.fmt.periodo(ctx.periodo) + ' · ' + CC.fmt.money(r.egresos) + ' en egresos';
   },
   acciones: function () {
-    return [{ texto: 'Registrar gasto', icono: 'más', clase: 'btn', accion: 'gasto' }];
+    return [{ texto: 'Registrar gasto', icono: 'mas', clase: 'btn', accion: 'gasto' }];
   },
 
   render: function (ctx) {

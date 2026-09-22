@@ -86,7 +86,7 @@ CC.vistas.unidades = {
     return n + (n === 1 ? ' unidad' : ' unidades') + ' · ' + CC.fmt.num(CC.Model.totalM2()) + ' m² en total';
   },
   acciones: function () {
-    return [{ texto: 'Nueva unidad', icono: 'más', clase: 'btn', accion: 'nuevaUnidad' }];
+    return [{ texto: 'Nueva unidad', icono: 'mas', clase: 'btn', accion: 'nuevaUnidad' }];
   },
 
   render: function (ctx) {
@@ -208,7 +208,7 @@ CC.vistas.unidad = {
   acciones: function (ctx) {
     if (!CC.Store.unidad(ctx.param)) return [];
     return [
-      { texto: 'Registrar pago', icono: 'más', clase: 'btn', accion: 'pagoUnidad' },
+      { texto: 'Registrar pago', icono: 'mas', clase: 'btn', accion: 'pagoUnidad' },
       { texto: 'Recordatorio', icono: 'wa', clase: 'btn btn--ghost', accion: 'recordatorio' },
       { texto: 'Imprimir', icono: 'imprimir', clase: 'btn btn--ghost', accion: 'imprimir' },
       { texto: 'Editar', icono: 'ajustes', clase: 'btn btn--ghost', accion: 'editar' }

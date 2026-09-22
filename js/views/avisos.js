@@ -16,7 +16,7 @@ CC.vistas.avisos = {
     return n ? n + (n === 1 ? ' aviso publicado' : ' avisos publicados') : 'Sin avisos publicados';
   },
   acciones: function () {
-    return [{ texto: 'Publicar aviso', icono: 'más', clase: 'btn', accion: 'nuevo' }];
+    return [{ texto: 'Publicar aviso', icono: 'mas', clase: 'btn', accion: 'nuevo' }];
   },
 
   render: function () {
