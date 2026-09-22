@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!--ARTIFACT:HEAD-START-->
+<title>Cuota Clara</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@600;700&display=swap">
+<link rel="stylesheet" href="css/app.css">
+<!--ARTIFACT:HEAD-END-->
+</head>
+<body>
+<!--ARTIFACT:BODY-START-->
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+  <symbol id="i-panel" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="8" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="11" width="7" height="10" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></symbol>
+  <symbol id="i-unidades" viewBox="0 0 24 24"><path d="M4 21V6.5a1.5 1.5 0 0 1 1-1.41l6-2.2a1.5 1.5 0 0 1 2 1.41V21"/><path d="M13 10h5.5A1.5 1.5 0 0 1 20 11.5V21"/><path d="M2 21h20"/></symbol>
+  <symbol id="i-cobranza" viewBox="0 0 24 24"><path d="M5 21V4.5a.5.5 0 0 1 .77-.42L8 5.5l2.23-1.42a.5.5 0 0 1 .54 0L13 5.5l2.23-1.42a.5.5 0 0 1 .54 0L18 5.5l2.23-1.42a.5.5 0 0 1 .77.42V21"/><path d="M3 21h20"/><path d="M9 9.5h7M9 13.5h7"/></symbol>
+  <symbol id="i-gastos" viewBox="0 0 24 24"><path d="M3 8.5A2.5 2.5 0 0 1 5.5 6H19a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5.5A2.5 2.5 0 0 1 3 16.5Z"/><circle cx="16.5" cy="12.5" r="1.4"/></symbol>
+  <symbol id="i-reportes" viewBox="0 0 24 24"><path d="M4 20V4"/><path d="M4 20h16"/><path d="M8 20v-6"/><path d="M13 20V9"/><path d="M18 20v-9.5"/></symbol>
+  <symbol id="i-avisos" viewBox="0 0 24 24"><path d="M4 10.5v3a1.5 1.5 0 0 0 1.5 1.5H8l6.2 4.1a.8.8 0 0 0 1.3-.67V5.57a.8.8 0 0 0-1.3-.67L8 9H5.5A1.5 1.5 0 0 0 4 10.5Z"/><path d="M18.5 9.5a4 4 0 0 1 0 5"/></symbol>
+  <symbol id="i-ajustes" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></symbol>
+  <symbol id="i-portal" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></symbol>
+  <symbol id="i-más" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-buscar" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></symbol>
+  <symbol id="i-cerrar" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+  <symbol id="i-wa" viewBox="0 0 24 24"><path d="M3.5 20.5 5 16.3A8.2 8.2 0 1 1 8.1 19.3Z"/><path d="M9 9.2c.2 1.7 1.3 3.2 2.8 4.1.6.4 1.4.7 2 .3l.7-.5"/></symbol>
+  <symbol id="i-imprimir" viewBox="0 0 24 24"><path d="M7 8V3.5h10V8"/><path d="M7 17H5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="7" y="14" width="10" height="6.5" rx="1"/></symbol>
+  <symbol id="i-volver" viewBox="0 0 24 24"><path d="M10 6 4 12l6 6"/><path d="M4 12h16"/></symbol>
+  <symbol id="i-tema" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.2 5.2l1.4 1.4M17.4 17.4l1.4 1.4M18.8 5.2l-1.4 1.4M6.6 17.4l-1.4 1.4"/></symbol>
+</svg>
+
+<div class="app" id="app">
+
+  <aside class="nav" id="nav">
+    <div class="nav__brand">
+      <span class="brand__mark" aria-hidden="true"><i></i><i></i><i></i></span>
+      <span class="brand__text">
+        <strong>Cuota Clara</strong>
+        <small id="brandCondo">Administración</small>
+      </span>
+    </div>
+
+    <nav class="nav__list" aria-label="Secciones">
+      <a class="nav__item" data-route="panel" href="#/panel"><svg class="i"><use href="#i-panel"/></svg><span>Panel</span></a>
+      <a class="nav__item" data-route="unidades" href="#/unidades"><svg class="i"><use href="#i-unidades"/></svg><span>Unidades</span></a>
+      <a class="nav__item" data-route="cobranza" href="#/cobranza"><svg class="i"><use href="#i-cobranza"/></svg><span>Cobranza</span><em class="nav__badge" id="badgeMorosos" hidden></em></a>
+      <a class="nav__item" data-route="gastos" href="#/gastos"><svg class="i"><use href="#i-gastos"/></svg><span>Gastos</span></a>
+      <a class="nav__item" data-route="reportes" href="#/reportes"><svg class="i"><use href="#i-reportes"/></svg><span>Reportes</span></a>
+      <a class="nav__item" data-route="avisos" href="#/avisos"><svg class="i"><use href="#i-avisos"/></svg><span>Avisos</span></a>
+      <a class="nav__item" data-route="ajustes" href="#/ajustes"><svg class="i"><use href="#i-ajustes"/></svg><span>Ajustes</span></a>
+    </nav>
+
+    <div class="nav__foot">
+      <a class="nav__portal" data-route="portal" href="#/portal">
+        <svg class="i"><use href="#i-portal"/></svg>
+        <span><strong>Portal del residente</strong><small>Lo que ve el vecino</small></span>
+      </a>
+      <button class="ghostbtn" id="btnTema" type="button" title="Cambiar tema">
+        <svg class="i"><use href="#i-tema"/></svg><span>Tema</span>
+      </button>
+    </div>
+  </aside>
+
+  <main class="main" id="main">
+    <header class="topbar">
+      <div class="topbar__id">
+        <h1 id="topTitle">Panel</h1>
+        <p id="topSub" class="topbar__sub"></p>
+      </div>
+      <div class="topbar__tools">
+        <label class="field field--inline" for="selPeriodo">
+          <span class="field__lab">Periodo</span>
+          <select id="selPeriodo" class="input input--sm"></select>
+        </label>
+        <div id="topActions" class="topbar__actions"></div>
+      </div>
+    </header>
+
+    <div class="view" id="view" role="region" aria-live="polite"></div>
+
+    <footer class="foot">
+      <p>Cuota Clara &middot; administraci&oacute;n de condominios. Importes en pesos mexicanos.</p>
+      <p class="foot__firma">Demostraci&oacute;n desarrollada por
+        <a href="https://vonoaweb.com" target="_blank" rel="noopener">Vonoa Web</a>
+        &middot; Guadalajara, Jalisco</p>
+    </footer>
+  </main>
+
+  <nav class="tabbar" aria-label="Secciones">
+    <a class="tabbar__item" data-route="panel" href="#/panel"><svg class="i"><use href="#i-panel"/></svg><span>Panel</span></a>
+    <a class="tabbar__item" data-route="unidades" href="#/unidades"><svg class="i"><use href="#i-unidades"/></svg><span>Unidades</span></a>
+    <a class="tabbar__item" data-route="cobranza" href="#/cobranza"><svg class="i"><use href="#i-cobranza"/></svg><span>Cobranza</span></a>
+    <a class="tabbar__item" data-route="gastos" href="#/gastos"><svg class="i"><use href="#i-gastos"/></svg><span>Gastos</span></a>
+    <a class="tabbar__item" data-route="reportes" href="#/reportes"><svg class="i"><use href="#i-reportes"/></svg><span>Reportes</span></a>
+  </nav>
+
+</div>
+
+<div class="modal" id="modal" hidden>
+  <div class="modal__scrim" data-close="1"></div>
+  <div class="modal__box" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <header class="modal__head">
+      <h2 id="modalTitle"></h2>
+      <button class="iconbtn" type="button" data-close="1" aria-label="Cerrar"><svg class="i"><use href="#i-cerrar"/></svg></button>
+    </header>
+    <div class="modal__body" id="modalBody"></div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script src="js/format.js"></script>
+<script src="js/store.js"></script>
+<script src="js/seed.js"></script>
+<script src="js/model.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/views/panel.js"></script>
+<script src="js/views/unidades.js"></script>
+<script src="js/views/cobranza.js"></script>
+<script src="js/views/gastos.js"></script>
+<script src="js/views/reportes.js"></script>
+<script src="js/views/avisos.js"></script>
+<script src="js/views/ajustes.js"></script>
+<script src="js/views/portal.js"></script>
+<script src="js/app.js"></script>
+<!--ARTIFACT:BODY-END-->
+</body>
+</html>
