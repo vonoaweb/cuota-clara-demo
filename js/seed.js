@@ -44,6 +44,12 @@ CC.Seed = (function () {
   var CUOTA_EXTRA = 1200;            // derrama por repavimentación
   var N_PERIODOS = 4;
 
+  /* Versión del condominio de ejemplo. Al subirla, a quien abrió el demo antes
+     se le vuelve a sembrar con los datos nuevos en lugar de dejarle los viejos.
+     Solo afecta a los datos de ejemplo: lo que alguien capturó de verdad
+     (meta.demo === false) nunca se toca. */
+  var SEMILLA = 2;   // 1 = 18 departamentos en torres · 2 = 150 casas
+
   var NOMBRES = [
     'María', 'José', 'Guadalupe', 'Juan', 'Alejandra', 'Ricardo', 'Verónica', 'Martín',
     'Silvia', 'Óscar', 'Adriana', 'Fernando', 'Claudia', 'Héctor', 'Norma', 'Tomás',
@@ -518,11 +524,11 @@ CC.Seed = (function () {
       documentos: documentosEjemplo(hoy),
       reglamento: reglamentoEjemplo(),
       meta: {
-        demo: true, folioRecibo: 2,
+        demo: true, semilla: SEMILLA, folioRecibo: 2,
         creado: new Date().toISOString(), actualizado: new Date().toISOString()
       }
     };
   }
 
-  return { construir: construir, vacio: vacio };
+  return { construir: construir, vacio: vacio, SEMILLA: SEMILLA };
 })();

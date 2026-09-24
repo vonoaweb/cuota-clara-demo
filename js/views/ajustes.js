@@ -100,9 +100,15 @@ CC.vistas.ajustes = {
           'Puedes usar la aplicación, pero los cambios se pierden al cerrar la pestaña. Suele pasar en ventanas privadas.</div></div>') +
 
       '<div class="formrow" style="gap:9px">' +
-      '<button class="btn btn--ghost" id="bCopiarRespaldo">Copiar respaldo</button>' +
-      '<button class="btn btn--ghost" id="bRestaurar">Restaurar desde respaldo</button>' +
+      '<button class="btn" id="bDescargar">Guardar base de datos</button>' +
+      '<button class="btn btn--ghost" id="bAbrirArchivo">Abrir desde archivo</button>' +
+      '<input type="file" id="fArchivo" accept=".json,application/json" hidden>' +
+      '<button class="btn btn--ghost" id="bCopiarRespaldo">Copiar como texto</button>' +
+      '<button class="btn btn--ghost" id="bRestaurar">Pegar desde texto</button>' +
       '</div>' +
+      '<p class="field__hint">"Guardar base de datos" baja un archivo con todo: padrón, pagos, ' +
+      'gastos, recibos y reglamento. Guárdalo en una carpeta o en una memoria USB. ' +
+      'Con "Abrir desde archivo" se recupera tal cual, en esta o en otra computadora.</p>' +
 
       '<div style="border-top:1px solid var(--rule);padding-top:16px;margin-top:4px">' +
       '<p class="eyebrow" style="margin-bottom:8px">Empezar de nuevo</p>' +
@@ -182,6 +188,53 @@ CC.vistas.ajustes = {
         CC.Store.actualizarCategorias(cats);
       };
     });
+
+    /* Guardar la base de datos como archivo: es lo que la mayoría entiende por
+       "tener sus datos". Queda un .json que se puede copiar a una USB. */
+    raiz.querySelector('#bDescargar').onclick = function () {
+      var nombre = (CC.Store.condominio().nombre || 'condominio')
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase();
+      var archivo = nombre + '-' + CC.per.hoyISO() + '.json';
+
+      try {
+        var blob = new Blob([CC.Store.exportar()], { type: 'application/json' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = archivo;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+        CC.ui.toast('Se guardó ' + archivo, 'good');
+      } catch (e) {
+        // Algunos visores bloquean las descargas: queda el camino de copiar el texto
+        CC.ui.copiar(CC.Store.exportar(),
+          'Aquí no se permite descargar; el respaldo se copió como texto');
+      }
+    };
+
+    raiz.querySelector('#bAbrirArchivo').onclick = function () {
+      raiz.querySelector('#fArchivo').click();
+    };
+
+    raiz.querySelector('#fArchivo').onchange = function (e) {
+      var f = e.target.files && e.target.files[0];
+      if (!f) return;
+      var lector = new FileReader();
+      lector.onload = function () {
+        try {
+          CC.Store.importar(String(lector.result));
+          CC.ui.toast('Base de datos abierta: ' + f.name, 'good');
+        } catch (err) {
+          CC.ui.toast(err.message || 'Ese archivo no es una base de datos de Cuota Clara', 'crit');
+        }
+      };
+      lector.onerror = function () { CC.ui.toast('No se pudo leer el archivo', 'crit'); };
+      lector.readAsText(f);
+      e.target.value = '';
+    };
 
     raiz.querySelector('#bCopiarRespaldo').onclick = function () {
       CC.ui.copiar(CC.Store.exportar(), 'Respaldo copiado: pégalo en un archivo de texto y guárdalo');

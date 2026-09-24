@@ -105,8 +105,17 @@ CC.Store = (function () {
     iniciar: function () {
       driver = elegirDriver();
       var guardado = driver.leer();
-      estado = (guardado && guardado.version === 1) ? migrar(guardado) : CC.Seed.construir();
-      if (!guardado) driver.escribir(estado);
+      var usar = (guardado && guardado.version === 1) ? migrar(guardado) : null;
+
+      // Si lo guardado son datos de EJEMPLO de una version anterior, se vuelve a
+      // sembrar: el condominio de muestra cambio y quien abre el demo debe ver el
+      // actual. Lo que alguien capturo de verdad (demo === false) no se toca nunca.
+      if (usar && usar.meta && usar.meta.demo && usar.meta.semilla !== CC.Seed.SEMILLA) {
+        usar = null;
+      }
+
+      estado = usar || CC.Seed.construir();
+      if (!usar) driver.escribir(estado);
       return estado;
     },
     usarDriver: function (d) {
