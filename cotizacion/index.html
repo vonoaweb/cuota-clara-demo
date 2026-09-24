@@ -479,27 +479,27 @@ tfoot td{background:var(--surface-2);font-family:var(--font-display);font-weight
 <section>
   <div class="wrap">
     <div class="sec__head">
-      <p class="eyebrow">Para comparar con criterio</p>
-      <h2>Contra rentar un sistema genérico</h2>
-      <p>CondoVive es la opción más conocida del mercado y es un buen producto.
-         Vale la pena ver la diferencia con números reales.</p>
+      <p class="eyebrow">Contra lo que pagan hoy</p>
+      <h2>Dejar de pagar renta cada mes</h2>
+      <p>Hoy el condominio paga <strong data-precio="comp-mes">$1,500</strong> al mes por
+         CondoVive. Es un buen producto; la pregunta es si conviene seguir rentándolo.</p>
     </div>
 
     <div class="tablabox">
       <div class="scroller">
         <table>
           <thead>
-            <tr><th>Concepto</th><th>CondoVive</th><th>Vonoa · Opción B</th></tr>
+            <tr><th>Concepto</th><th>CondoVive, como hoy</th><th>Sistema propio</th></tr>
           </thead>
           <tbody>
             <tr><td>Qué se paga</td>
                 <td class="n">Renta mensual, para siempre</td>
                 <td class="n si">Una sola vez</td></tr>
             <tr><td>Costo del primer año</td>
-                <td class="n">$24,300 + IVA</td>
-                <td class="n si" data-precio="anio1">$23,000 + IVA</td></tr>
+                <td class="n" data-precio="comp-anio">$18,000</td>
+                <td class="n" data-precio="anio1">$23,000</td></tr>
             <tr><td>Costo del segundo año en adelante</td>
-                <td class="n">$24,300 + IVA cada año</td>
+                <td class="n"><span data-precio="comp-anio2">$18,000</span> cada año</td>
                 <td class="n si">$0</td></tr>
             <tr><td>Dónde viven los datos</td>
                 <td class="no2">En sus servidores, en Estados Unidos</td>
@@ -528,29 +528,35 @@ tfoot td{background:var(--surface-2);font-family:var(--font-display);font-weight
           </tbody>
           <tfoot>
             <tr><td>Costo a 3 años</td>
-                <td class="n">$72,900 + IVA</td>
-                <td class="n si" data-precio="total3">$23,000 + IVA</td></tr>
+                <td class="n" data-precio="comp-3">$54,000</td>
+                <td class="n si" data-precio="total3">$23,000</td></tr>
+            <tr><td>Costo a 5 años</td>
+                <td class="n" data-precio="comp-5">$90,000</td>
+                <td class="n si" data-precio="total5">$23,000</td></tr>
           </tfoot>
         </table>
       </div>
     </div>
 
     <p class="fuente">
-      Precios de CondoVive verificados el 24 de septiembre de 2026 en su calculadora pública
-      (<a href="https://condovive.com/pricing" target="_blank" rel="noopener">condovive.com/pricing</a>),
-      capturando 150 unidades: Plan 300, $2,025 MXN al mes más IVA. No incluye su descuento por
-      pago anual anticipado. Son los precios de lista al día de esta propuesta y pueden cambiar.
+      Costo de CondoVive calculado con lo que el condominio paga actualmente,
+      <span data-precio="comp-mes-2">$1,500</span> al mes. Para referencia, su precio de lista
+      publicado para 150 unidades es de $2,025 al mes más IVA
+      (<a href="https://condovive.com/pricing" target="_blank" rel="noopener">condovive.com/pricing</a>,
+      consultado el 24 de septiembre de 2026), así que su tarifa actual podría subir al renovar.
     </p>
 
     <div class="nota nota--warn" style="margin-top:18px">
-      <strong>En corto:</strong> lo que un sistema rentado les cobraría en el primer año,
-      aquí se paga una sola vez. Del segundo año en adelante el condominio no vuelve a pagar
-      nada por el programa. A tres años la diferencia es de
-      <strong data-precio="ahorro3">$49,900</strong>, y al final el sistema sigue siendo suyo.
+      <strong>En corto:</strong> el primer año el sistema propio cuesta un poco más que la renta.
+      A partir del mes <strong data-precio="meses-rec">16</strong> ya se pagó solo, y de ahí en
+      adelante el condominio deja de pagar
+      <strong data-precio="comp-anio3">$18,000</strong> al año. A tres años son
+      <strong data-precio="ahorro3">$31,000</strong> que se quedan en la caja del condominio;
+      a cinco, <strong data-precio="ahorro5">$67,000</strong>.
       <br><br>
-      Para ser justos con la comparación: CondoVive tiene cosas que esta propuesta no incluye
-      — facturación ante el SAT, app en las tiendas y portal con cuenta para cada vecino.
-      Si algún día las necesitan, se cotizan aparte.
+      Para ser justos: CondoVive tiene cosas que esta propuesta no incluye — facturación ante
+      el SAT, app en las tiendas y portal con cuenta para cada vecino. Si las usan hoy y las
+      necesitan, conviene decirlo antes de decidir.
     </div>
   </div>
 </section>
@@ -666,7 +672,7 @@ var PROPUESTA = {
   folio: 'COT-2609',
   local: 23000,                // pago único: programa y base de datos en su computadora
   nube: 4800,                  // complemento opcional, por año
-  competidorMensual: 2025      // CondoVive, 150 unidades, verificado 24-sep-2026
+  competidorMensual: 1500      // lo que el condominio paga HOY a CondoVive (dato del cliente)
 };
 
 (function () {
@@ -680,15 +686,31 @@ var PROPUESTA = {
     });
   }
 
-  var competidorAnual = PROPUESTA.competidorMensual * 12;
+  var mes = PROPUESTA.competidorMensual;
+  var anio = mes * 12;
 
   pon('local', mx.format(PROPUESTA.local));
-  pon('anio1', mx.format(PROPUESTA.local) + ' + IVA');
-  pon('total3', mx.format(PROPUESTA.local) + ' + IVA');
+  pon('anio1', mx.format(PROPUESTA.local));
+  pon('total3', mx.format(PROPUESTA.local));
+  pon('total5', mx.format(PROPUESTA.local));
+
+  pon('comp-mes', mx.format(mes));
+  pon('comp-mes-2', mx.format(mes));
+  pon('comp-anio', mx.format(anio));
+  pon('comp-anio2', mx.format(anio));
+  pon('comp-anio3', mx.format(anio));
+  pon('comp-3', mx.format(anio * 3));
+  pon('comp-5', mx.format(anio * 5));
+
+  // Primer mes en que la renta acumulada ya rebasa el pago único
+  // (23,000 / 1,500 = 15.3 → en el mes 16 la renta suma 24,000)
+  pon('meses-rec', String(Math.ceil(PROPUESTA.local / mes)));
+  pon('ahorro3', mx.format(anio * 3 - PROPUESTA.local));
+  pon('ahorro5', mx.format(anio * 5 - PROPUESTA.local));
+
   pon('nube', mx.format(PROPUESTA.nube));
   pon('nube-mes', mx.format(Math.round(PROPUESTA.nube / 12)));
   pon('nube-tabla', mx.format(PROPUESTA.nube));
-  pon('ahorro3', mx.format(competidorAnual * 3 - PROPUESTA.local));
 
   var cli = document.getElementById('mCliente');
   if (cli) cli.textContent = PROPUESTA.cliente;
