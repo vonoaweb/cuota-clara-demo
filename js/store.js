@@ -76,12 +76,26 @@ CC.Store = (function () {
     emitir();
   }
 
+  /**
+   * Completa lo que falte en un documento guardado por una version anterior.
+   * Sin esto, a quien ya tenia datos le explotarian las secciones nuevas.
+   */
+  function migrar(d) {
+    if (!d || typeof d !== 'object') return d;
+    if (!Array.isArray(d.recibos)) d.recibos = [];
+    if (!Array.isArray(d.notas)) d.notas = [];
+    if (!Array.isArray(d.difusiones)) d.difusiones = [];
+    if (!d.meta) d.meta = { demo: false, creado: new Date().toISOString() };
+    if (typeof d.meta.folioRecibo !== 'number') d.meta.folioRecibo = d.recibos.length;
+    return d;
+  }
+
   return {
     /* --- ciclo de vida --- */
     iniciar: function () {
       driver = elegirDriver();
       var guardado = driver.leer();
-      estado = (guardado && guardado.version === 1) ? guardado : CC.Seed.construir();
+      estado = (guardado && guardado.version === 1) ? migrar(guardado) : CC.Seed.construir();
       if (!guardado) driver.escribir(estado);
       return estado;
     },
@@ -102,6 +116,9 @@ CC.Store = (function () {
     gastos: function () { return estado.gastos; },
     avisos: function () { return estado.avisos; },
     categorias: function () { return estado.categorias; },
+    recibos: function () { return estado.recibos || []; },
+    notas: function () { return estado.notas || []; },
+    difusiones: function () { return estado.difusiones || []; },
     esDemo: function () { return !!estado.meta.demo; },
 
     unidad: function (id) {
@@ -201,6 +218,64 @@ CC.Store = (function () {
     },
     borrarAviso: function (id) {
       estado.avisos = estado.avisos.filter(function (a) { return a.id !== id; });
+      guardar();
+    },
+
+    /* --- recibos de pago a proveedores (el del jardinero) --- */
+    siguienteFolio: function () {
+      return (estado.meta.folioRecibo || 0) + 1;
+    },
+    agregarRecibo: function (r) {
+      r.id = nuevoId('rec');
+      estado.meta.folioRecibo = (estado.meta.folioRecibo || 0) + 1;
+      r.folio = estado.meta.folioRecibo;
+      r.registrado = new Date().toISOString();
+      estado.recibos.unshift(r);
+      estado.meta.demo = false;
+      guardar();
+      return r;
+    },
+    recibo: function (id) {
+      var r = estado.recibos || [];
+      for (var i = 0; i < r.length; i++) if (r[i].id === id) return r[i];
+      return null;
+    },
+    borrarRecibo: function (id) {
+      var r = this.recibo(id);
+      if (r) {
+        // las imagenes viven aparte: hay que soltarlas a mano
+        if (r.firmaId) CC.Archivos.borrar(r.firmaId);
+        if (r.fotoId) CC.Archivos.borrar(r.fotoId);
+      }
+      estado.recibos = estado.recibos.filter(function (x) { return x.id !== id; });
+      guardar();
+    },
+
+    /* --- notas en la bitacora de una unidad --- */
+    agregarNota: function (n) {
+      n.id = nuevoId('not');
+      n.fecha = n.fecha || new Date().toISOString().slice(0, 10);
+      estado.notas.unshift(n);
+      estado.meta.demo = false;
+      guardar();
+      return n;
+    },
+    borrarNota: function (id) {
+      estado.notas = estado.notas.filter(function (n) { return n.id !== id; });
+      guardar();
+    },
+
+    /* --- difusiones enviadas a los residentes --- */
+    agregarDifusion: function (d) {
+      d.id = nuevoId('dif');
+      d.enviada = new Date().toISOString();
+      estado.difusiones.unshift(d);
+      estado.meta.demo = false;
+      guardar();
+      return d;
+    },
+    borrarDifusion: function (id) {
+      estado.difusiones = estado.difusiones.filter(function (d) { return d.id !== id; });
       guardar();
     },
 

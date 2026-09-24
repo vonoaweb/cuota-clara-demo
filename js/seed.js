@@ -70,6 +70,21 @@ CC.Seed = (function () {
     return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   }
 
+  /* Una firma garabateada, para que los recibos de ejemplo se vean firmados.
+     Las firmas reales se dibujan con el dedo y se guardan en CC.Archivos. */
+  function firmaEjemplo(trazo) {
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="190" height="60" viewBox="0 0 190 60">' +
+      '<rect width="190" height="60" fill="#fff"/>' +
+      '<path d="' + trazo + '" fill="none" stroke="#111A22" stroke-width="2.1" ' +
+      'stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  }
+
+  var TRAZOS = [
+    'M12,42 C24,10 34,52 46,30 C56,12 62,46 74,28 C86,12 94,40 106,32 C116,26 126,38 140,22 M30,50 C70,46 110,48 156,42',
+    'M14,38 C26,16 32,48 44,26 C54,10 66,44 78,26 C88,12 98,42 112,30 C124,20 134,36 148,26 M26,48 C68,52 108,44 150,48'
+  ];
+
   function condominioEjemplo() {
     return {
       nombre: 'Residencial Alameda 214',
@@ -103,7 +118,13 @@ CC.Seed = (function () {
       categorias: CATEGORIAS.map(function (x) {
         return { id: CC.Store.nuevoId('cat'), nombre: x[0], presupuesto: 0, proveedor: '' };
       }),
-      meta: { demo: false, creado: new Date().toISOString(), actualizado: new Date().toISOString() }
+      recibos: [],
+      notas: [],
+      difusiones: [],
+      meta: {
+        demo: false, folioRecibo: 0,
+        creado: new Date().toISOString(), actualizado: new Date().toISOString()
+      }
     };
   }
 
@@ -247,6 +268,61 @@ CC.Seed = (function () {
       }
     ];
 
+    /* --- Recibos de pago en mano: el jardinero, el plomero --- */
+    var recibos = [
+      {
+        id: 'rec_1', folio: 2,
+        fecha: hoy + '-12',
+        periodo: hoy,
+        recibeDe: 'Residencial Alameda 214',
+        nombre: 'Salvador Ibarra Mendoza',
+        identificacion: 'INE 1234567890',
+        concepto: 'Poda de setos y limpieza de jardineras de acceso',
+        categoria: 'Jardinería',
+        monto: 1450,
+        metodo: 'Efectivo',
+        firmaInline: firmaEjemplo(TRAZOS[0]),
+        fotoId: null,
+        nota: 'Trabajo extra fuera del contrato mensual, autorizado por el comité.',
+        registrado: new Date().toISOString()
+      },
+      {
+        id: 'rec_2', folio: 1,
+        fecha: CC.per.suma(hoy, -1) + '-26',
+        periodo: CC.per.suma(hoy, -1),
+        recibeDe: 'Residencial Alameda 214',
+        nombre: 'Jorge Alberto Ramírez Solís',
+        identificacion: 'INE 0987654321',
+        concepto: 'Reparación de fuga en toma de agua, Torre B planta baja',
+        categoria: 'Cisterna y bombas',
+        monto: 980,
+        metodo: 'Efectivo',
+        firmaInline: firmaEjemplo(TRAZOS[1]),
+        fotoId: null,
+        nota: '',
+        registrado: new Date().toISOString()
+      }
+    ];
+
+    /* --- Bitácora: notas sueltas sobre unidades --- */
+    var notas = [
+      {
+        id: 'not_1', unidadId: 'uni_b203', fecha: hoy + '-14',
+        tipo: 'gestion',
+        texto: 'Se le llamó por teléfono. Pidió convenio a 3 pagos para ponerse al corriente; queda pendiente que el comité lo apruebe en la próxima asamblea.'
+      },
+      {
+        id: 'not_2', unidadId: 'uni_a203', fecha: CC.per.suma(hoy, -1) + '-28',
+        tipo: 'gestion',
+        texto: 'Recordatorio enviado por WhatsApp. Confirmó recepción y dijo que pagaría en quincena.'
+      },
+      {
+        id: 'not_3', unidadId: 'uni_a103', fecha: CC.per.suma(hoy, -2) + '-09',
+        tipo: 'incidencia',
+        texto: 'Reportó ruido de la bomba durante la noche. Se revisó con el proveedor y se ajustó el horario del temporizador.'
+      }
+    ];
+
     unidades.forEach(function (u) { delete u._cuota; });
 
     return {
@@ -258,7 +334,13 @@ CC.Seed = (function () {
       gastos: gastos,
       avisos: avisos,
       categorias: categorias,
-      meta: { demo: true, creado: new Date().toISOString(), actualizado: new Date().toISOString() }
+      recibos: recibos,
+      notas: notas,
+      difusiones: [],
+      meta: {
+        demo: true, folioRecibo: 2,
+        creado: new Date().toISOString(), actualizado: new Date().toISOString()
+      }
     };
   }
 

@@ -209,6 +209,7 @@ CC.vistas.unidad = {
     if (!CC.Store.unidad(ctx.param)) return [];
     return [
       { texto: 'Registrar pago', icono: 'mas', clase: 'btn', accion: 'pagoUnidad' },
+      { texto: 'Anotar', icono: 'avisos', clase: 'btn btn--ghost', accion: 'nota' },
       { texto: 'Recordatorio', icono: 'wa', clase: 'btn btn--ghost', accion: 'recordatorio' },
       { texto: 'Imprimir', icono: 'imprimir', clase: 'btn btn--ghost', accion: 'imprimir' },
       { texto: 'Editar', icono: 'ajustes', clase: 'btn btn--ghost', accion: 'editar' }
@@ -306,9 +307,137 @@ CC.vistas.unidad = {
       }
     ]);
 
+    /* --- Bitácora: todo lo que ha pasado con esta casa, en un solo hilo --- */
+    var eventos = [];
+
+    CC.Store.cargos().filter(function (c) { return c.unidadId === u.id; })
+      .forEach(function (c) {
+        eventos.push({
+          fecha: c.fechaVence || (c.periodo + '-01'),
+          etiqueta: c.tipo === 'extraordinaria' ? 'Cuota extraordinaria' : 'Cargo',
+          tono: 'mute',
+          titulo: c.concepto,
+          detalle: 'Se generó por ' + CC.fmt.money2(c.monto) +
+            ', con vencimiento el ' + CC.fmt.fecha(c.fechaVence)
+        });
+      });
+
+    CC.Store.pagos().filter(function (p) { return p.unidadId === u.id; })
+      .forEach(function (p) {
+        eventos.push({
+          fecha: p.fecha,
+          etiqueta: 'Pago',
+          tono: 'good',
+          titulo: 'Pagó ' + CC.fmt.money2(p.monto),
+          detalle: [
+            p.metodo,
+            p.referencia ? 'referencia ' + p.referencia : '',
+            'aplicado a ' + CC.fmt.periodo(p.periodo),
+            p.nota
+          ].filter(Boolean).join(' · ')
+        });
+      });
+
+    CC.Store.notas().filter(function (n) { return n.unidadId === u.id; })
+      .forEach(function (n) {
+        eventos.push({
+          fecha: n.fecha,
+          etiqueta: n.tipo === 'incidencia' ? 'Incidencia' : 'Gestión',
+          tono: n.tipo === 'incidencia' ? 'warn' : 'accent',
+          titulo: n.tipo === 'incidencia' ? 'Incidencia reportada' : 'Gestión de cobranza',
+          detalle: n.texto,
+          notaId: n.id
+        });
+      });
+
+    eventos.sort(function (a, b) { return (a.fecha || '') < (b.fecha || '') ? 1 : -1; });
+
+    var bitacora =
+      '<div class="panelbox">' +
+      '<div class="panelbox__head"><h3>Historial de la casa</h3>' +
+      '<span class="eyebrow">' + eventos.length + ' movimientos desde ' +
+      esc(eventos.length ? CC.fmt.periodo(CC.per.de(eventos[eventos.length - 1].fecha)) : '—') +
+      '</span></div>' +
+      (eventos.length
+        ? '<ol class="bitacora">' + eventos.map(function (e) {
+            return '<li class="bitacora__item bitacora__item--' + e.tono + '">' +
+              '<div class="bitacora__marca" aria-hidden="true"></div>' +
+              '<div class="bitacora__cuerpo">' +
+              '<div class="bitacora__cab">' +
+              '<span class="pill pill--flat pill--' + (e.tono === 'accent' ? 'mute' : e.tono) + '">' +
+              esc(e.etiqueta) + '</span>' +
+              '<time class="mono">' + esc(CC.fmt.fecha(e.fecha)) + '</time>' +
+              (e.notaId
+                ? '<button class="iconbtn noprint" data-delnota="' + esc(e.notaId) + '" title="Borrar nota">' +
+                  CC.ui.icono('cerrar', 'i--sm') + '</button>'
+                : '') +
+              '</div>' +
+              '<p class="bitacora__titulo">' + esc(e.titulo) + '</p>' +
+              (e.detalle ? '<p class="bitacora__detalle">' + esc(e.detalle) + '</p>' : '') +
+              '</div></li>';
+          }).join('') + '</ol>'
+        : '<div class="empty"><strong>Sin movimientos</strong>' +
+          '<p>Aquí aparecerá todo lo que pase con esta casa: cargos, pagos, ' +
+          'llamadas de cobranza e incidencias.</p></div>') +
+      '</div>';
+
     return '<p class="noprint"><a href="#/unidades" class="btn btn--sm btn--ghost">' +
       CC.ui.icono('volver', 'i--sm') + ' Padrón de unidades</a></p>' +
-      cifras + cabecera;
+      cifras + cabecera + bitacora;
+  },
+
+  montar: function (raiz) {
+    raiz.querySelectorAll('[data-delnota]').forEach(function (b) {
+      b.onclick = function () {
+        CC.ui.confirmar('Borrar nota',
+          'La nota desaparece del historial de la casa.',
+          'Borrar', function () {
+            CC.Store.borrarNota(b.getAttribute('data-delnota'));
+            CC.ui.toast('Nota borrada');
+          }, true);
+      };
+    });
+  },
+
+  /** Anota una llamada, un acuerdo o una incidencia en el historial. */
+  nota: function (ctx) {
+    var u = CC.Store.unidad(ctx.param);
+    if (!u) return;
+    var esc = CC.ui.esc;
+
+    CC.ui.modal('Anotar en el historial de ' + u.clave,
+      '<div class="formgrid">' +
+      '<label class="field"><span class="field__lab">Tipo</span>' +
+      '<select class="input" id="nTipo">' +
+      '<option value="gestion">Gestión de cobranza</option>' +
+      '<option value="incidencia">Incidencia</option>' +
+      '</select></label>' +
+      '<label class="field"><span class="field__lab">Fecha</span>' +
+      '<input class="input" id="nFecha" type="date" value="' + esc(CC.per.hoyISO()) + '"></label>' +
+      '</div>' +
+      '<label class="field" style="margin-top:14px"><span class="field__lab">Qué pasó</span>' +
+      '<textarea class="input" id="nTexto" rows="5" ' +
+      'placeholder="Se le llamó, quedó de pagar el viernes. / Reportó una fuga en el patio."></textarea>' +
+      '<span class="field__hint">Queda en el historial de la casa, con fecha. Sirve de constancia.</span></label>' +
+      '<div class="formactions">' +
+      '<button type="button" class="btn btn--ghost" id="nCancel">Cancelar</button>' +
+      '<button type="button" class="btn" id="nOk">Guardar nota</button>' +
+      '</div>',
+      function (cuerpo) {
+        cuerpo.querySelector('#nCancel').onclick = CC.ui.cerrarModal;
+        cuerpo.querySelector('#nOk').onclick = function () {
+          var texto = cuerpo.querySelector('#nTexto').value.trim();
+          if (!texto) { CC.ui.toast('Escribe qué pasó', 'crit'); return; }
+          CC.Store.agregarNota({
+            unidadId: u.id,
+            tipo: cuerpo.querySelector('#nTipo').value,
+            fecha: cuerpo.querySelector('#nFecha').value || CC.per.hoyISO(),
+            texto: texto
+          });
+          CC.ui.cerrarModal();
+          CC.ui.toast('Anotado en el historial', 'good');
+        };
+      });
   },
 
   pagoUnidad: function (ctx) { CC.vistas.cobranza.formularioPago(ctx.param, ctx.periodo); },

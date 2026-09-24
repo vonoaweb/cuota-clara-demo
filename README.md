@@ -32,6 +32,7 @@ condominio-app/
 ├── css/app.css           Una sola hoja: tokens → layout → componentes → print
 ├── js/
 │   ├── format.js         Moneda, fechas y periodos en es-MX
+│   ├── archivos.js       Firmas y fotos en IndexedDB, y el lienzo de firma
 │   ├── store.js          Persistencia y estado (único punto que toca el guardado)
 │   ├── seed.js           Datos de ejemplo y estructura vacía
 │   ├── model.js          Reglas del condominio: indiviso, cuotas, saldos, caja
@@ -41,6 +42,21 @@ condominio-app/
 ├── build-artifact.py     Genera la versión para publicar como Artifact
 └── dist/                 Salida de ese script
 ```
+
+### Secciones
+
+| Sección | Para qué |
+|---|---|
+| Panel | Cómo va el mes en un vistazo |
+| Unidades | Padrón, estado de cuenta e historial de cada casa |
+| Cobranza | Generar cuotas, registrar pagos, recordatorios |
+| Gastos | Servicios del condominio contra su presupuesto |
+| Recibos | Comprobantes de pago en mano, con firma y foto |
+| Difusión | Correos a los residentes, con plantillas |
+| Reportes | Cierre mensual imprimible para asamblea |
+| Avisos | Tablero que ven los residentes |
+| Ajustes | Datos, reglas de cobro y respaldo |
+| Portal | Lo que ve el vecino desde su lado |
 
 Los scripts son clásicos (sin módulos ES) y se cargan en orden de dependencia.
 Todo cuelga de un solo global, `CC`.
@@ -88,11 +104,42 @@ Decisiones que vale la pena conocer:
 
 ---
 
+## Recibos con firma y foto
+
+El caso que lo motiva: llega el jardinero por su pago y hay que dejar
+constancia. Se captura en el celular, firma con el dedo sobre el lienzo, se
+toma la foto y se imprime o se guarda con folio consecutivo.
+
+- La **firma** se dibuja en un `<canvas>` (`CC.Firma`) y se guarda recortada al
+  trazo, sobre fondo blanco, como PNG de unos 6 KB.
+- La **foto** se comprime antes de guardarla: a 1000 px de lado y calidad 0.65,
+  una foto de celular de 4 MB baja a unos 100 KB.
+- Ambas viven en **IndexedDB** (`CC.Archivos`), no en `localStorage`: una sola
+  foto no cabría junto al resto de la información. Los registros solo guardan
+  el id de la imagen.
+
+Si el navegador bloquea IndexedDB, `CC.Archivos.disponible()` devuelve `false`
+y la aplicación esconde la parte de la foto en vez de fallar.
+
+## Difusión por correo
+
+La aplicación **no envía correo por su cuenta** — eso necesita un servidor. Lo
+que hace es preparar el mensaje y entregárselo al correo que la persona ya usa,
+con los destinatarios en copia oculta (`mailto:?bcc=…`). Sale desde su cuenta y
+le queda en enviados.
+
+Con muchas direcciones el navegador trunca la URL, así que arriba de ~1800
+caracteres el botón cambia de comportamiento: copia las direcciones al
+portapapeles para pegarlas en el campo CCO. Las plantillas sustituyen
+`{condominio}`, `{administrador}`, `{periodo}`, `{vencimiento}`, `{mora}` y
+`{cuenta}` con los datos reales.
+
 ## Dónde se guardan los datos
 
-En el navegador de quien usa la aplicación (`localStorage`), a través de
-`CC.Store`. Ninguna otra parte del código toca el almacenamiento, y esa es
-la costura para conectar un backend real.
+En el navegador de quien usa la aplicación (`localStorage` para los datos,
+IndexedDB para las imágenes), a través de `CC.Store` y `CC.Archivos`. Ninguna
+otra parte del código toca el almacenamiento, y esa es la costura para conectar
+un backend real.
 
 Hoy hay dos drivers: `local` (localStorage) y `memoria` (respaldo cuando el
 navegador bloquea el guardado, por ejemplo en ventana privada). Un driver es

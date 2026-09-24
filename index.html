@@ -24,6 +24,8 @@
   <symbol id="i-ajustes" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></symbol>
   <symbol id="i-portal" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></symbol>
   <symbol id="i-mas" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-recibos" viewBox="0 0 24 24"><path d="M6 21V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v17l-3-2-3 2-3-2Z"/><path d="M9.5 8h5M9.5 12h5"/></symbol>
+  <symbol id="i-difusion" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 6.5 8.5 6 8.5-6"/></symbol>
   <symbol id="i-buscar" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></symbol>
   <symbol id="i-cerrar" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
   <symbol id="i-wa" viewBox="0 0 24 24"><path d="M3.5 20.5 5 16.3A8.2 8.2 0 1 1 8.1 19.3Z"/><path d="M9 9.2c.2 1.7 1.3 3.2 2.8 4.1.6.4 1.4.7 2 .3l.7-.5"/></symbol>
@@ -48,6 +50,8 @@
       <a class="nav__item" data-route="unidades" href="#/unidades"><svg class="i"><use href="#i-unidades"/></svg><span>Unidades</span></a>
       <a class="nav__item" data-route="cobranza" href="#/cobranza"><svg class="i"><use href="#i-cobranza"/></svg><span>Cobranza</span><em class="nav__badge" id="badgeMorosos" hidden></em></a>
       <a class="nav__item" data-route="gastos" href="#/gastos"><svg class="i"><use href="#i-gastos"/></svg><span>Gastos</span></a>
+      <a class="nav__item" data-route="recibos" href="#/recibos"><svg class="i"><use href="#i-recibos"/></svg><span>Recibos</span></a>
+      <a class="nav__item" data-route="difusion" href="#/difusion"><svg class="i"><use href="#i-difusion"/></svg><span>Difusión</span></a>
       <a class="nav__item" data-route="reportes" href="#/reportes"><svg class="i"><use href="#i-reportes"/></svg><span>Reportes</span></a>
       <a class="nav__item" data-route="avisos" href="#/avisos"><svg class="i"><use href="#i-avisos"/></svg><span>Avisos</span></a>
       <a class="nav__item" data-route="ajustes" href="#/ajustes"><svg class="i"><use href="#i-ajustes"/></svg><span>Ajustes</span></a>
@@ -94,7 +98,7 @@
     <a class="tabbar__item" data-route="unidades" href="#/unidades"><svg class="i"><use href="#i-unidades"/></svg><span>Unidades</span></a>
     <a class="tabbar__item" data-route="cobranza" href="#/cobranza"><svg class="i"><use href="#i-cobranza"/></svg><span>Cobranza</span></a>
     <a class="tabbar__item" data-route="gastos" href="#/gastos"><svg class="i"><use href="#i-gastos"/></svg><span>Gastos</span></a>
-    <a class="tabbar__item" data-route="reportes" href="#/reportes"><svg class="i"><use href="#i-reportes"/></svg><span>Reportes</span></a>
+    <a class="tabbar__item" data-route="recibos" href="#/recibos"><svg class="i"><use href="#i-recibos"/></svg><span>Recibos</span></a>
   </nav>
 
 </div>
@@ -113,6 +117,7 @@
 <div class="toasts" id="toasts" aria-live="polite"></div>
 
 <script src="js/format.js"></script>
+<script src="js/archivos.js"></script>
 <script src="js/store.js"></script>
 <script src="js/seed.js"></script>
 <script src="js/model.js"></script>
@@ -121,6 +126,8 @@
 <script src="js/views/unidades.js"></script>
 <script src="js/views/cobranza.js"></script>
 <script src="js/views/gastos.js"></script>
+<script src="js/views/recibos.js"></script>
+<script src="js/views/difusion.js"></script>
 <script src="js/views/reportes.js"></script>
 <script src="js/views/avisos.js"></script>
 <script src="js/views/ajustes.js"></script>
