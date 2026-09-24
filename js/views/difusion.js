@@ -87,8 +87,8 @@ CC.vistas.difusion = {
     if (!unidades.length) {
       return '<div class="panelbox"><div class="empty">' +
         '<strong>Todavía no hay residentes</strong>' +
-        '<p>Captura las unidades con su correo para poder mandarles avisos.</p>' +
-        '<a class="btn" href="#/unidades" style="margin-top:8px">Ir a unidades</a></div></div>';
+        '<p>Captura las casas con su correo para poder mandarles avisos.</p>' +
+        '<a class="btn" href="#/unidades" style="margin-top:8px">Ir a casas</a></div></div>';
     }
 
     var elegidos = destinatarios(borrador.grupo, ctx.periodo);
@@ -120,9 +120,9 @@ CC.vistas.difusion = {
       }).join('') + '</div>' +
       (sinCorreo.length
         ? '<div class="note note--demo"><div><strong>' + sinCorreo.length +
-          (sinCorreo.length === 1 ? ' unidad no tiene correo' : ' unidades no tienen correo') + ':</strong> ' +
+          (sinCorreo.length === 1 ? ' casa no tiene correo' : ' casas no tienen correo') + ':</strong> ' +
           esc(sinCorreo.map(function (x) { return x.unidad.clave; }).join(', ')) +
-          '. No les va a llegar. Captúralo en Unidades.</div></div>'
+          '. No les va a llegar. Captúralo en Casas.</div></div>'
         : '') +
       '</div></div>');
 
@@ -158,7 +158,7 @@ CC.vistas.difusion = {
         '<div class="panelbox__head"><h3>Estado de cuenta uno por uno</h3>' +
         '<span class="eyebrow">' + conSaldo.length + ' con saldo</span></div>' +
         '<div class="tablewrap"><table class="ledger">' +
-        '<thead><tr><th>Unidad</th><th>Correo</th><th class="r">Saldo</th><th class="noprint"></th></tr></thead><tbody>' +
+        '<thead><tr><th>Casa</th><th>Correo</th><th class="r">Saldo</th><th class="noprint"></th></tr></thead><tbody>' +
         conSaldo.map(function (x) {
           return '<tr class="' + (x.situacion.estado === 'moroso' ? 'row--crit' : 'row--warn') + '">' +
             '<td class="strong">' + esc(x.unidad.clave) + '</td>' +
@@ -168,7 +168,7 @@ CC.vistas.difusion = {
             'Preparar correo</button></td></tr>';
         }).join('') + '</tbody></table></div>' +
         '<div class="panelbox__body" style="border-top:1px solid var(--rule)">' +
-        '<p class="field__hint">Cada correo lleva el saldo real de esa unidad y su desglose. ' +
+        '<p class="field__hint">Cada correo lleva el saldo real de esa casa y su desglose. ' +
         'Es el mismo texto del recordatorio de WhatsApp, pero para correo.</p></div>' +
         '</div>');
     }
@@ -275,7 +275,7 @@ CC.vistas.difusion = {
         var u = CC.Store.unidad(b.getAttribute('data-individual'));
         if (!u) return;
         var texto = CC.Model.recordatorio(u.id, ctx.periodo);
-        var asunto = 'Estado de cuenta ' + u.clave + ' — ' + CC.Store.condominio().nombre;
+        var asunto = 'Estado de cuenta casa ' + u.clave + ' — ' + CC.Store.condominio().nombre;
         window.location.href = 'mailto:' + encodeURIComponent(u.email) +
           '?subject=' + encodeURIComponent(asunto) +
           '&body=' + encodeURIComponent(texto);

@@ -43,7 +43,7 @@ CC.vistas.ajustes = {
       '<span class="eyebrow">Definen cuotas, vencimientos y recargos</span></div>' +
       '<div class="panelbox__body">' +
       '<div class="formgrid">' +
-      campoNum('cPresupuesto', 'Presupuesto mensual', c.presupuestoMensual, 'Se reparte entre las unidades por indiviso') +
+      campoNum('cPresupuesto', 'Presupuesto mensual', c.presupuestoMensual, 'Se reparte entre las casas por indiviso') +
       campoNum('cDia', 'Día de vencimiento', c.diaVencimiento, 'Día del mes en que vence la cuota') +
       campoNum('cMora', 'Recargo mensual (%)', c.tasaMoraMensual, 'Sobre el saldo vencido') +
       campoNum('cFondo', 'Fondo de reserva (%)', c.fondoReservaPct, 'Parte de lo cobrado que se aparta') +
@@ -51,7 +51,7 @@ CC.vistas.ajustes = {
       '</div>' +
       '<div class="note" style="margin-top:16px"><div>' +
       'Con un presupuesto de <strong>' + esc(CC.fmt.money(c.presupuestoMensual)) + '</strong> repartido entre ' +
-      CC.Store.unidades().length + ' unidades, las cuotas suman <strong>' + esc(CC.fmt.money(cuotaTotal)) + '</strong> al mes. ' +
+      CC.Store.unidades().length + ' casas, las cuotas suman <strong>' + esc(CC.fmt.money(cuotaTotal)) + '</strong> al mes. ' +
       (totalPresupuesto > 0
         ? 'El presupuesto de egresos es de <strong>' + esc(CC.fmt.money(totalPresupuesto)) + '</strong>, lo que deja ' +
           '<strong>' + esc(CC.fmt.money(cuotaTotal - totalPresupuesto)) + '</strong> de margen mensual.'
@@ -111,7 +111,7 @@ CC.vistas.ajustes = {
       '<button class="btn btn--ghost" id="bEjemplo">Volver a los datos de ejemplo</button>' +
       '</div>' +
       '<p class="field__hint" style="margin-top:8px">' +
-      '"Empezar con mi condominio" borra todo y te deja la estructura vacía para capturar tus unidades reales.</p>' +
+      '"Empezar con mi condominio" borra todo y te deja la estructura vacía para capturar tus casas reales.</p>' +
       '</div>' +
 
       '</div></div>');
@@ -215,7 +215,7 @@ CC.vistas.ajustes = {
         'Si quieres conservar lo actual, copia primero el respaldo.',
         'Borrar y empezar', function () {
           CC.Store.empezarDeCero({ nombre: 'Mi condominio' });
-          CC.ui.toast('Listo: captura tus unidades en la sección Unidades', 'good');
+          CC.ui.toast('Listo: captura tus casas en la sección Casas', 'good');
           location.hash = '#/ajustes';
         }, true);
     };

@@ -14,7 +14,43 @@ CC.Model = (function () {
     return t;
   }
 
-  /* ---------- Unidades, indiviso y cuota ---------- */
+  /* ---------- Índice por casa ----------
+     Con 150 casas y cuatro periodos hay cientos de cargos y pagos. Recorrer
+     las listas completas para cada casa se vuelve lento, así que se agrupan
+     una sola vez y el índice se tira cuando algo cambia. */
+  var _idx = null;
+
+  function indice() {
+    if (_idx) return _idx;
+    var cargos = {}, pagos = {};
+
+    CC.Store.cargos().forEach(function (c) {
+      (cargos[c.unidadId] = cargos[c.unidadId] || []).push(c);
+    });
+    CC.Store.pagos().forEach(function (p) {
+      (pagos[p.unidadId] = pagos[p.unidadId] || []).push(p);
+    });
+
+    // El orden importa: los pagos se aplican a los cargos más viejos primero
+    Object.keys(cargos).forEach(function (k) {
+      cargos[k].sort(function (a, b) {
+        if (a.periodo !== b.periodo) return a.periodo < b.periodo ? -1 : 1;
+        return a.tipo === 'cuota' ? -1 : 1;
+      });
+    });
+    Object.keys(pagos).forEach(function (k) {
+      pagos[k].sort(function (a, b) { return (a.fecha || '') < (b.fecha || '') ? -1 : 1; });
+    });
+
+    _idx = { cargos: cargos, pagos: pagos };
+    return _idx;
+  }
+
+  if (CC.Store && CC.Store.alCambiar) {
+    CC.Store.alCambiar(function () { _idx = null; });
+  }
+
+  /* ---------- Casas, indiviso y cuota ---------- */
 
   function totalM2() {
     var u = CC.Store.unidades(), t = 0;
@@ -37,7 +73,7 @@ CC.Model = (function () {
     return Math.round(indiviso(unidad) * (Number(CC.Store.condominio().presupuestoMensual) || 0));
   }
 
-  /** Suma de las cuotas de todas las unidades: el ingreso esperado del mes. */
+  /** Suma de las cuotas de todas las casas: el ingreso esperado del mes. */
   function cuotaTotal() {
     return CC.Store.unidades().reduce(function (a, u) { return a + cuota(u); }, 0);
   }
@@ -63,17 +99,11 @@ CC.Model = (function () {
    */
   function aplicacion(unidadId, hasta) {
     var tope = hasta || CC.per.hoy();
+    var ix = indice();
 
-    var cargos = CC.Store.cargos()
-      .filter(function (c) { return c.unidadId === unidadId && c.periodo <= tope; })
-      .sort(function (a, b) {
-        if (a.periodo !== b.periodo) return a.periodo < b.periodo ? -1 : 1;
-        return a.tipo === 'cuota' ? -1 : 1;
-      });
-
-    var pagos = CC.Store.pagos()
-      .filter(function (p) { return p.unidadId === unidadId && p.periodo <= tope; })
-      .sort(function (a, b) { return (a.fecha || '') < (b.fecha || '') ? -1 : 1; });
+    // Ya vienen ordenados del índice: solo hay que recortar al periodo
+    var cargos = (ix.cargos[unidadId] || []).filter(function (c) { return c.periodo <= tope; });
+    var pagos = (ix.pagos[unidadId] || []).filter(function (p) { return p.periodo <= tope; });
 
     var bolsa = suma(pagos, 'monto');
     var lineas = cargos.map(function (c) {
@@ -140,7 +170,7 @@ CC.Model = (function () {
     moroso: { texto: 'Moroso', clase: 'pill--crit' }
   };
 
-  /** Todas las unidades con su situacion, listas para tabla. */
+  /** Todas las casas con su situación, listas para tabla. */
   function padron(hasta) {
     return CC.Store.unidades().map(function (u) {
       var s = situacion(u.id, hasta);
@@ -150,9 +180,17 @@ CC.Model = (function () {
         indiviso: indiviso(u),
         situacion: s
       };
-    }).sort(function (a, b) {
-      return a.unidad.clave < b.unidad.clave ? -1 : 1;
-    });
+    }).sort(ordenCasas);
+  }
+
+  /** Ordena por calle y luego por número: "Fresnos 2" antes que "Fresnos 10". */
+  function ordenCasas(a, b) {
+    var ua = a.unidad || a, ub = b.unidad || b;
+    var ca = ua.calle || '', cb = ub.calle || '';
+    if (ca !== cb) return ca < cb ? -1 : 1;
+    var na = Number(ua.numero), nb = Number(ub.numero);
+    if (!isNaN(na) && !isNaN(nb) && na !== nb) return na - nb;
+    return (ua.clave || '') < (ub.clave || '') ? -1 : 1;
   }
 
   /* ---------- Resumen financiero del periodo ---------- */
@@ -237,7 +275,7 @@ CC.Model = (function () {
 
   /* ---------- Generacion de cuotas del mes ---------- */
 
-  /** Unidades a las que todavía no se les ha generado la cuota del periodo. */
+  /** Casas a las que todavía no se les ha generado la cuota del periodo. */
   function faltanCuota(periodo) {
     var conCuota = {};
     CC.Store.cargos().forEach(function (c) {
@@ -271,7 +309,7 @@ CC.Model = (function () {
     var l = [];
     l.push('Hola ' + quien + ', le escribimos de la administración de ' + c.nombre + '.');
     l.push('');
-    l.push('Estado de cuenta de la unidad ' + u.clave + ' al ' + CC.fmt.fecha(CC.per.hoyISO()) + ':');
+    l.push('Estado de cuenta de la casa ' + u.clave + ' al ' + CC.fmt.fecha(CC.per.hoyISO()) + ':');
     l.push('• Saldo pendiente: ' + CC.fmt.money2(s.saldo));
     if (s.mesesVencidos > 0) {
       l.push('• Meses vencidos: ' + s.mesesVencidos + ' (desde ' + CC.fmt.periodo(s.desde) + ')');
@@ -306,6 +344,7 @@ CC.Model = (function () {
     serie: serie,
     faltanCuota: faltanCuota,
     proyectarCuotas: proyectarCuotas,
+    ordenCasas: ordenCasas,
     recordatorio: recordatorio,
     ETIQUETA_ESTADO: ETIQUETA_ESTADO,
     suma: suma

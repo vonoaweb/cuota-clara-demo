@@ -21,7 +21,7 @@ CC.vistas.portal = {
   titulo: 'Portal del residente',
   sub: function (ctx) {
     var u = unidadActiva(ctx);
-    return u ? 'Vista previa como unidad ' + u.clave : 'Sin unidades capturadas';
+    return u ? 'Vista previa como casa ' + u.clave : 'Sin unidades capturadas';
   },
 
   render: function (ctx) {
@@ -32,9 +32,9 @@ CC.vistas.portal = {
 
     if (!u) {
       return '<div class="panelbox"><div class="empty">' +
-        '<strong>Todavía no hay unidades</strong>' +
-        '<p>Captura las unidades del condominio para poder ver su portal.</p>' +
-        '<a class="btn" href="#/unidades" style="margin-top:8px">Ir a unidades</a></div></div>';
+        '<strong>Todavía no hay casas</strong>' +
+        '<p>Captura las casas del condominio para poder ver su portal.</p>' +
+        '<a class="btn" href="#/unidades" style="margin-top:8px">Ir a casas</a></div></div>';
     }
 
     unidadPortal = u.id;
@@ -47,7 +47,7 @@ CC.vistas.portal = {
     out.push(
       '<div class="note noprint">' +
       '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;width:100%">' +
-      '<span>Así ve el portal el residente de la unidad</span>' +
+      '<span>Así ve el portal el residente de la casa</span>' +
       '<select class="input input--sm" id="selPortal" style="width:auto;min-width:200px">' +
       CC.Store.unidades().slice().sort(function (a, b) { return a.clave < b.clave ? -1 : 1; })
         .map(function (x) {
@@ -63,7 +63,7 @@ CC.vistas.portal = {
       '<div class="recibo">' +
       '<div class="recibo__head">' +
       '<div><p class="eyebrow">' + esc(cond.nombre || 'Condominio') + '</p>' +
-      '<h3>Hola ' + esc(quien || 'vecino') + ', unidad ' + esc(u.clave) + '</h3>' +
+      '<h3>Hola ' + esc(quien || 'vecino') + ', casa ' + esc(u.clave) + '</h3>' +
       '<p class="muted" style="font-size:12.5px;margin-top:6px">' +
       (alCorriente
         ? 'Tu cuenta está al corriente. Gracias por pagar a tiempo.'
@@ -161,7 +161,7 @@ CC.vistas.portal = {
         (cond.cuenta
           ? '<div><p class="eyebrow">Transferencia o depósito</p>' +
             '<p class="mono" style="font-size:13.5px;margin-top:5px">' + esc(cond.cuenta) + '</p>' +
-            '<p class="muted" style="font-size:12px;margin-top:6px">Usa como referencia tu unidad: <strong>' +
+            '<p class="muted" style="font-size:12px;margin-top:6px">Usa como referencia tu casa: <strong>' +
             esc(u.clave) + '</strong>. Envía el comprobante para que se aplique el mismo día.</p></div>'
           : '') +
         '<div><p class="eyebrow">Administración</p>' +

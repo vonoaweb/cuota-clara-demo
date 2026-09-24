@@ -26,6 +26,7 @@
   <symbol id="i-mas" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
   <symbol id="i-recibos" viewBox="0 0 24 24"><path d="M6 21V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v17l-3-2-3 2-3-2Z"/><path d="M9.5 8h5M9.5 12h5"/></symbol>
   <symbol id="i-difusion" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 6.5 8.5 6 8.5-6"/></symbol>
+  <symbol id="i-reglamento" viewBox="0 0 24 24"><path d="M4 19.5V5a2 2 0 0 1 2-2h12.5v16H6a2 2 0 0 0-2 2V19.5Z"/><path d="M8 7.5h7M8 11h7M8 14.5h4"/></symbol>
   <symbol id="i-buscar" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></symbol>
   <symbol id="i-cerrar" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
   <symbol id="i-wa" viewBox="0 0 24 24"><path d="M3.5 20.5 5 16.3A8.2 8.2 0 1 1 8.1 19.3Z"/><path d="M9 9.2c.2 1.7 1.3 3.2 2.8 4.1.6.4 1.4.7 2 .3l.7-.5"/></symbol>
@@ -47,12 +48,13 @@
 
     <nav class="nav__list" aria-label="Secciones">
       <a class="nav__item" data-route="panel" href="#/panel"><svg class="i"><use href="#i-panel"/></svg><span>Panel</span></a>
-      <a class="nav__item" data-route="unidades" href="#/unidades"><svg class="i"><use href="#i-unidades"/></svg><span>Unidades</span></a>
+      <a class="nav__item" data-route="unidades" href="#/unidades"><svg class="i"><use href="#i-unidades"/></svg><span>Casas</span></a>
       <a class="nav__item" data-route="cobranza" href="#/cobranza"><svg class="i"><use href="#i-cobranza"/></svg><span>Cobranza</span><em class="nav__badge" id="badgeMorosos" hidden></em></a>
       <a class="nav__item" data-route="gastos" href="#/gastos"><svg class="i"><use href="#i-gastos"/></svg><span>Gastos</span></a>
       <a class="nav__item" data-route="recibos" href="#/recibos"><svg class="i"><use href="#i-recibos"/></svg><span>Recibos</span></a>
       <a class="nav__item" data-route="difusion" href="#/difusion"><svg class="i"><use href="#i-difusion"/></svg><span>Difusión</span></a>
       <a class="nav__item" data-route="reportes" href="#/reportes"><svg class="i"><use href="#i-reportes"/></svg><span>Reportes</span></a>
+      <a class="nav__item" data-route="reglamento" href="#/reglamento"><svg class="i"><use href="#i-reglamento"/></svg><span>Reglamento</span></a>
       <a class="nav__item" data-route="avisos" href="#/avisos"><svg class="i"><use href="#i-avisos"/></svg><span>Avisos</span></a>
       <a class="nav__item" data-route="ajustes" href="#/ajustes"><svg class="i"><use href="#i-ajustes"/></svg><span>Ajustes</span></a>
     </nav>
@@ -95,7 +97,7 @@
 
   <nav class="tabbar" aria-label="Secciones">
     <a class="tabbar__item" data-route="panel" href="#/panel"><svg class="i"><use href="#i-panel"/></svg><span>Panel</span></a>
-    <a class="tabbar__item" data-route="unidades" href="#/unidades"><svg class="i"><use href="#i-unidades"/></svg><span>Unidades</span></a>
+    <a class="tabbar__item" data-route="unidades" href="#/unidades"><svg class="i"><use href="#i-unidades"/></svg><span>Casas</span></a>
     <a class="tabbar__item" data-route="cobranza" href="#/cobranza"><svg class="i"><use href="#i-cobranza"/></svg><span>Cobranza</span></a>
     <a class="tabbar__item" data-route="gastos" href="#/gastos"><svg class="i"><use href="#i-gastos"/></svg><span>Gastos</span></a>
     <a class="tabbar__item" data-route="recibos" href="#/recibos"><svg class="i"><use href="#i-recibos"/></svg><span>Recibos</span></a>
@@ -128,6 +130,7 @@
 <script src="js/views/gastos.js"></script>
 <script src="js/views/recibos.js"></script>
 <script src="js/views/difusion.js"></script>
+<script src="js/views/reglamento.js"></script>
 <script src="js/views/reportes.js"></script>
 <script src="js/views/avisos.js"></script>
 <script src="js/views/ajustes.js"></script>

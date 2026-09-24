@@ -34,7 +34,7 @@ CC.vistas.reportes = {
       '<div class="recibo__folio">' +
       'Periodo: ' + esc(CC.fmt.periodo(p)) + '<br>' +
       'Emitido: ' + esc(CC.fmt.fechaCorta(CC.per.hoyISO())) + '<br>' +
-      'Unidades: ' + r.unidades + '</div>' +
+      'Casas: ' + r.unidades + '</div>' +
       '</div>' +
 
       '<div class="tablewrap"><table class="ledger">' +
@@ -108,9 +108,9 @@ CC.vistas.reportes = {
 
         return '<div class="panelbox">' +
           '<div class="panelbox__head"><h3>Antigüedad de saldos</h3>' +
-          '<span class="eyebrow">' + r.unidades + ' unidades</span></div>' +
+          '<span class="eyebrow">' + r.unidades + ' casas</span></div>' +
           '<div class="tablewrap"><table class="ledger">' +
-          '<thead><tr><th>Antigüedad</th><th class="c">Unidades</th><th class="r">Importe</th></tr></thead>' +
+          '<thead><tr><th>Antigüedad</th><th class="c">Casas</th><th class="r">Importe</th></tr></thead>' +
           '<tbody>' + cubos.map(function (c) {
             return '<tr><td>' + CC.ui.pillLibre(c.lab, 'pill--' + c.tono) + '</td>' +
               '<td class="c strong">' + c.n + '</td>' +
@@ -145,7 +145,7 @@ CC.vistas.reportes = {
       '</div></div>');
 
     out.push('<p class="muted" style="font-size:11.5px">Documento generado por Cuota Clara el ' +
-      esc(CC.fmt.fecha(CC.per.hoyISO())) + '. Los importes de recargo son estimados y no se han cargado a las unidades.</p>');
+      esc(CC.fmt.fecha(CC.per.hoyISO())) + '. Los importes de recargo son estimados y no se han cargado a las casas.</p>');
 
     return out.join('');
   },
@@ -180,9 +180,9 @@ CC.vistas.reportes = {
     l.push('  del cual fondo de reserva: ' + CC.fmt.money2(fondo));
     l.push('');
     l.push('Cartera vencida: ' + CC.fmt.money2(r.carteraVencida) +
-      ' en ' + r.morosos + ' de ' + r.unidades + ' unidades.');
+      ' en ' + r.morosos + ' de ' + r.unidades + ' casas.');
     l.push('');
-    l.push('El detalle por unidad está disponible con la administración.');
+    l.push('El detalle por casa está disponible con la administración.');
 
     CC.ui.copiar(l.join('\n'), 'Resumen del mes copiado');
   }

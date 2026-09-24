@@ -85,8 +85,18 @@ CC.Store = (function () {
     if (!Array.isArray(d.recibos)) d.recibos = [];
     if (!Array.isArray(d.notas)) d.notas = [];
     if (!Array.isArray(d.difusiones)) d.difusiones = [];
+    if (!Array.isArray(d.documentos)) d.documentos = [];
+    if (!d.reglamento || !Array.isArray(d.reglamento.capitulos)) {
+      d.reglamento = { titulo: 'Reglamento Interno', aprobado: '', nota: '', capitulos: [] };
+    }
     if (!d.meta) d.meta = { demo: false, creado: new Date().toISOString() };
     if (typeof d.meta.folioRecibo !== 'number') d.meta.folioRecibo = d.recibos.length;
+
+    // El campo de agrupación se llamaba "torre" cuando el ejemplo eran
+    // departamentos; en un condominio de casas es la calle.
+    (d.unidades || []).forEach(function (u) {
+      if (u.calle === undefined) u.calle = u.torre || '';
+    });
     return d;
   }
 
@@ -119,6 +129,8 @@ CC.Store = (function () {
     recibos: function () { return estado.recibos || []; },
     notas: function () { return estado.notas || []; },
     difusiones: function () { return estado.difusiones || []; },
+    documentos: function () { return estado.documentos || []; },
+    reglamento: function () { return estado.reglamento; },
     esDemo: function () { return !!estado.meta.demo; },
 
     unidad: function (id) {
@@ -276,6 +288,47 @@ CC.Store = (function () {
     },
     borrarDifusion: function (id) {
       estado.difusiones = estado.difusiones.filter(function (d) { return d.id !== id; });
+      guardar();
+    },
+
+    /* --- expediente del condominio --- */
+    agregarDocumento: function (d) {
+      d.id = nuevoId('doc');
+      estado.documentos.unshift(d);
+      estado.meta.demo = false;
+      guardar();
+      return d;
+    },
+    borrarDocumento: function (id) {
+      var lista = estado.documentos || [];
+      for (var i = 0; i < lista.length; i++) {
+        if (lista[i].id === id && lista[i].fotoId) CC.Archivos.borrar(lista[i].fotoId);
+      }
+      estado.documentos = lista.filter(function (d) { return d.id !== id; });
+      guardar();
+    },
+
+    /* --- reglamento interno --- */
+    actualizarReglamento: function (cambios) {
+      Object.assign(estado.reglamento, cambios);
+      estado.meta.demo = false;
+      guardar();
+    },
+    agregarCapitulo: function (nombre) {
+      estado.reglamento.capitulos.push({ nombre: nombre, articulos: [] });
+      estado.meta.demo = false;
+      guardar();
+    },
+    borrarCapitulo: function (i) {
+      estado.reglamento.capitulos.splice(i, 1);
+      guardar();
+    },
+    guardarCapitulo: function (i, nombre, articulos) {
+      var cap = estado.reglamento.capitulos[i];
+      if (!cap) return;
+      cap.nombre = nombre;
+      cap.articulos = articulos;
+      estado.meta.demo = false;
       guardar();
     },
 

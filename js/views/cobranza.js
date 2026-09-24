@@ -29,7 +29,7 @@ CC.vistas.cobranza = {
     var out = [];
 
     out.push(CC.ui.stats([
-      { lab: 'Esperado del mes', val: CC.fmt.money(r.esperado), nota: '<span>' + r.unidades + ' unidades</span>' },
+      { lab: 'Esperado del mes', val: CC.fmt.money(r.esperado), nota: '<span>' + r.unidades + ' casas</span>' },
       {
         lab: 'Cobrado', val: CC.fmt.money(r.cobrado),
         tono: r.cobranzaPct >= 0.9 ? 'good' : r.cobranzaPct >= 0.6 ? 'warn' : 'crit',
@@ -50,7 +50,7 @@ CC.vistas.cobranza = {
     if (faltan.length) {
       out.push('<div class="note">' +
         '<div><strong>Faltan ' + faltan.length + ' cuotas por generar</strong> en ' + esc(CC.fmt.periodo(p)) + '. ' +
-        'Al generarlas se crea el cargo de cada unidad con su vencimiento el día ' +
+        'Al generarlas se crea el cargo de cada casa con su vencimiento el día ' +
         esc(CC.Store.condominio().diaVencimiento) + '. ' +
         '<button class="btn btn--sm btn--soft" data-accion="generar" style="margin-left:6px">Generar ahora</button></div>' +
         '</div>');
@@ -100,7 +100,7 @@ CC.vistas.cobranza = {
     out.push('<div class="panelbox">' +
       '<div class="panelbox__head"><h3>Cobranza de ' + esc(CC.fmt.periodo(p)) + '</h3></div>' +
       '<div class="tablewrap"><table class="ledger">' +
-      '<thead><tr><th>Unidad</th><th class="r">Cargo del mes</th><th class="r">Pagado</th>' +
+      '<thead><tr><th>Casa</th><th class="r">Cargo del mes</th><th class="r">Pagado</th>' +
       '<th class="c">Mes</th><th class="r">Saldo total</th><th class="c">Estado</th><th></th></tr></thead>' +
       '<tbody>' + filas + '</tbody>' +
       '<tfoot><tr><td>Totales</td>' +
@@ -118,7 +118,7 @@ CC.vistas.cobranza = {
       '<span class="eyebrow">' + recibidos.length + ' movimientos</span></div>' +
       (recibidos.length
         ? '<div class="tablewrap"><table class="ledger">' +
-          '<thead><tr><th>Fecha</th><th>Unidad</th><th>Método</th><th>Referencia</th>' +
+          '<thead><tr><th>Fecha</th><th>Casa</th><th>Método</th><th>Referencia</th>' +
           '<th class="r">Monto</th><th class="noprint"></th></tr></thead><tbody>' +
           recibidos.map(function (x) {
             var u = CC.Store.unidad(x.unidadId);
@@ -180,7 +180,7 @@ CC.vistas.cobranza = {
   formularioPago: function (unidadId, periodo) {
     var esc = CC.ui.esc;
     var unidades = CC.Store.unidades().slice().sort(function (a, b) { return a.clave < b.clave ? -1 : 1; });
-    if (!unidades.length) { CC.ui.toast('Primero captura al menos una unidad', 'crit'); return; }
+    if (!unidades.length) { CC.ui.toast('Primero captura al menos una casa', 'crit'); return; }
 
     var elegida = unidadId || unidades[0].id;
     var sugerido = function (id) {
@@ -193,7 +193,7 @@ CC.vistas.cobranza = {
 
     CC.ui.modal('Registrar pago',
       '<div class="formgrid">' +
-      '<label class="field"><span class="field__lab">Unidad</span>' +
+      '<label class="field"><span class="field__lab">Casa</span>' +
       '<select class="input" id="pUnidad">' + unidades.map(function (u) {
         return '<option value="' + esc(u.id) + '"' + (u.id === elegida ? ' selected' : '') + '>' +
           esc(u.clave) + ' — ' + esc(u.inquilino || u.propietario || '') + '</option>';
@@ -237,8 +237,8 @@ CC.vistas.cobranza = {
         function pista() {
           var s = CC.Model.situacion(selU.value, periodo);
           hint.textContent = s.saldo > 0.005
-            ? 'Saldo actual de la unidad: ' + CC.fmt.money2(s.saldo)
-            : 'Esta unidad está al corriente';
+            ? 'Saldo actual de la casa: ' + CC.fmt.money2(s.saldo)
+            : 'Esta casa está al corriente';
         }
         pista();
 

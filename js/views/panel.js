@@ -51,7 +51,7 @@ CC.vistas.panel = {
         lab: 'Por cobrar',
         val: CC.fmt.money(r.porCobrar),
         tono: r.porCobrar > 0 ? 'warn' : 'good',
-        nota: '<span>' + r.morosos + ' de ' + r.unidades + ' unidades con saldo</span>'
+        nota: '<span>' + r.morosos + ' de ' + r.unidades + ' casas con saldo</span>'
       },
       {
         lab: 'Resultado del mes',
@@ -83,14 +83,14 @@ CC.vistas.panel = {
       '<a class="btn btn--sm btn--soft" href="#/cobranza">Ver cobranza</a></div>' +
       (pendientes.length
         ? '<div class="tablewrap"><table class="ledger">' +
-          '<thead><tr><th>Unidad</th><th class="c">Estado</th><th class="r">Saldo</th></tr></thead>' +
+          '<thead><tr><th>Casa</th><th class="c">Estado</th><th class="r">Saldo</th></tr></thead>' +
           '<tbody>' + filasPend + '</tbody>' +
           (pendientes.length > 6
-            ? '<tfoot><tr><td colspan="2">y ' + (pendientes.length - 6) + ' unidades más</td>' +
+            ? '<tfoot><tr><td colspan="2">y ' + (pendientes.length - 6) + ' casas más</td>' +
               '<td class="r">' + esc(CC.fmt.money(pendientes.slice(6).reduce(function (a, x) { return a + x.situacion.saldo; }, 0))) + '</td></tr></tfoot>'
             : '') +
           '</table></div>'
-        : '<div class="empty"><strong>Nadie debe nada</strong><p>Todas las unidades están al corriente en este periodo.</p></div>') +
+        : '<div class="empty"><strong>Nadie debe nada</strong><p>Todas las casas están al corriente en este periodo.</p></div>') +
       '</div>';
 
     var cats = CC.Model.porCategoria(p);

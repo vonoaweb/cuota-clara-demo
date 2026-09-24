@@ -3,20 +3,37 @@ window.CC = window.CC || {};
 CC.vistas = CC.vistas || {};
 
 /* Filtro vivo de la lista (no se guarda: es estado de pantalla). */
-var filtroUnidades = { texto: '', estado: 'todas', torre: 'todas' };
+var filtroUnidades = { texto: '', estado: 'todas', calle: 'todas' };
 
 /* ---------- Formulario de alta y edicion ---------- */
 function formularioUnidad(unidad) {
-  var u = unidad || { clave: '', torre: '', m2: '', propietario: '', inquilino: '', telefono: '', email: '', ocupacion: 'Propietario', cuotaOverride: null };
+  var u = unidad || {
+    clave: '', calle: '', numero: '', prototipo: '', m2: '', propietario: '',
+    inquilino: '', telefono: '', email: '', ocupacion: 'Propietario', cuotaOverride: null
+  };
   var esc = CC.ui.esc;
-  var titulo = unidad ? 'Editar unidad ' + u.clave : 'Nueva unidad';
+  var titulo = unidad ? 'Editar casa ' + u.clave : 'Nueva casa';
+
+  /* Calles ya capturadas, para no escribirlas de nuevo en cada alta */
+  var calles = {};
+  CC.Store.unidades().forEach(function (x) { if (x.calle) calles[x.calle] = 1; });
+  var listaCalles = Object.keys(calles).sort();
 
   CC.ui.modal(titulo,
     '<div class="formgrid">' +
-    '<label class="field"><span class="field__lab">Clave</span>' +
-    '<input class="input" id="fClave" value="' + esc(u.clave) + '" placeholder="A-101" required></label>' +
-    '<label class="field"><span class="field__lab">Torre o edificio</span>' +
-    '<input class="input" id="fTorre" value="' + esc(u.torre) + '" placeholder="Torre A"></label>' +
+    '<label class="field"><span class="field__lab">Identificador</span>' +
+    '<input class="input" id="fClave" value="' + esc(u.clave) + '" placeholder="Fresnos 12" required>' +
+    '<span class="field__hint">Como se le conoce a la casa en el condominio</span></label>' +
+    '<label class="field"><span class="field__lab">Calle</span>' +
+    '<input class="input" id="fCalle" value="' + esc(u.calle || '') + '" placeholder="Circuito Fresnos" list="listaCalles">' +
+    '<datalist id="listaCalles">' +
+    listaCalles.map(function (c) { return '<option value="' + esc(c) + '">'; }).join('') +
+    '</datalist></label>' +
+    '<label class="field"><span class="field__lab">Número</span>' +
+    '<input class="input num" id="fNumero" type="number" min="0" step="1" value="' + esc(u.numero || '') + '">' +
+    '<span class="field__hint">Ordena el padrón dentro de la calle</span></label>' +
+    '<label class="field"><span class="field__lab">Prototipo</span>' +
+    '<input class="input" id="fProto" value="' + esc(u.prototipo || '') + '" placeholder="A, B, C…"></label>' +
     '<label class="field"><span class="field__lab">Metros cuadrados</span>' +
     '<input class="input num" id="fM2" type="number" min="0" step="0.01" value="' + esc(u.m2) + '">' +
     '<span class="field__hint">Define el indiviso y con él la cuota</span></label>' +
@@ -33,12 +50,12 @@ function formularioUnidad(unidad) {
     '<input class="input" id="fMail" type="email" value="' + esc(u.email || '') + '"></label>' +
     '<label class="field"><span class="field__lab">Ocupación</span>' +
     '<select class="input" id="fOcup">' +
-    ['Propietario', 'Rentado', 'Desocupado'].map(function (o) {
+    ['Propietario', 'Rentada', 'Desocupada'].map(function (o) {
       return '<option' + (u.ocupacion === o ? ' selected' : '') + '>' + o + '</option>';
     }).join('') + '</select></label>' +
     '</div>' +
     '<div class="formactions">' +
-    (unidad ? '<button type="button" class="btn btn--ghost" id="bBorrar" style="margin-right:auto">Eliminar unidad</button>' : '') +
+    (unidad ? '<button type="button" class="btn btn--ghost" id="bBorrar" style="margin-right:auto">Eliminar casa</button>' : '') +
     '<button type="button" class="btn btn--ghost" id="bCancel">Cancelar</button>' +
     '<button type="button" class="btn" id="bGuardar">Guardar</button>' +
     '</div>',
@@ -48,21 +65,24 @@ function formularioUnidad(unidad) {
       var borrar = cuerpo.querySelector('#bBorrar');
       if (borrar) borrar.onclick = function () {
         CC.ui.confirmar('Eliminar ' + u.clave,
-          'Se borra la unidad junto con sus cargos y pagos. Esta acción no se puede deshacer.',
+          'Se borra la casa junto con sus cargos, pagos e historial. Esta acción no se puede deshacer.',
           'Eliminar', function () {
             CC.Store.borrarUnidad(u.id);
-            CC.ui.toast('Unidad eliminada');
+            CC.ui.toast('Casa eliminada');
             location.hash = '#/unidades';
           }, true);
       };
 
       cuerpo.querySelector('#bGuardar').onclick = function () {
         var clave = cuerpo.querySelector('#fClave').value.trim();
-        if (!clave) { CC.ui.toast('La clave de la unidad es obligatoria', 'crit'); return; }
+        if (!clave) { CC.ui.toast('La casa necesita un identificador', 'crit'); return; }
         var cuotaTxt = cuerpo.querySelector('#fCuota').value.trim();
+        var numTxt = cuerpo.querySelector('#fNumero').value.trim();
         var datos = {
           clave: clave,
-          torre: cuerpo.querySelector('#fTorre').value.trim(),
+          calle: cuerpo.querySelector('#fCalle').value.trim(),
+          numero: numTxt === '' ? null : Number(numTxt),
+          prototipo: cuerpo.querySelector('#fProto').value.trim(),
           m2: Number(cuerpo.querySelector('#fM2').value) || 0,
           cuotaOverride: cuotaTxt === '' ? null : Number(cuotaTxt),
           propietario: cuerpo.querySelector('#fProp').value.trim(),
@@ -71,8 +91,8 @@ function formularioUnidad(unidad) {
           email: cuerpo.querySelector('#fMail').value.trim(),
           ocupacion: cuerpo.querySelector('#fOcup').value
         };
-        if (unidad) { CC.Store.actualizarUnidad(u.id, datos); CC.ui.toast('Unidad actualizada', 'good'); }
-        else { CC.Store.agregarUnidad(datos); CC.ui.toast('Unidad agregada', 'good'); }
+        if (unidad) { CC.Store.actualizarUnidad(u.id, datos); CC.ui.toast('Casa actualizada', 'good'); }
+        else { CC.Store.agregarUnidad(datos); CC.ui.toast('Casa agregada', 'good'); }
         CC.ui.cerrarModal();
       };
     });
@@ -80,69 +100,115 @@ function formularioUnidad(unidad) {
 
 /* ---------- Vista: padron ---------- */
 CC.vistas.unidades = {
-  titulo: 'Unidades',
+  titulo: 'Casas',
   sub: function () {
     var n = CC.Store.unidades().length;
-    return n + (n === 1 ? ' unidad' : ' unidades') + ' · ' + CC.fmt.num(CC.Model.totalM2()) + ' m² en total';
+    if (!n) return 'Sin casas capturadas';
+    return n + (n === 1 ? ' casa' : ' casas') + ' · ' +
+      CC.fmt.num(CC.Model.totalM2()) + ' m² de construcción en total';
   },
   acciones: function () {
-    return [{ texto: 'Nueva unidad', icono: 'mas', clase: 'btn', accion: 'nuevaUnidad' }];
+    return [{ texto: 'Nueva casa', icono: 'mas', clase: 'btn', accion: 'nuevaUnidad' }];
   },
 
   render: function (ctx) {
     var esc = CC.ui.esc;
     var pad = CC.Model.padron(ctx.periodo);
-    var torres = {};
-    CC.Store.unidades().forEach(function (u) { if (u.torre) torres[u.torre] = 1; });
-    var listaTorres = Object.keys(torres).sort();
 
     if (!pad.length) {
       return '<div class="panelbox"><div class="empty">' +
-        '<strong>Todavía no hay unidades</strong>' +
-        '<p>Captura los departamentos o casas del condominio. El metraje de cada uno define su porcentaje de indiviso y su cuota.</p>' +
-        '<button class="btn" data-accion="nuevaUnidad" style="margin-top:8px">Agregar la primera unidad</button>' +
+        '<strong>Todavía no hay casas</strong>' +
+        '<p>Captura las casas del condominio. El metraje de cada una define su ' +
+        'porcentaje de indiviso y con él su cuota mensual.</p>' +
+        '<button class="btn" data-accion="nuevaUnidad" style="margin-top:8px">Agregar la primera casa</button>' +
         '</div></div>';
     }
 
-    /* Filtros */
+    /* --- Calles, para filtrar --- */
+    var conteoCalle = {};
+    pad.forEach(function (x) {
+      var c = x.unidad.calle || 'Sin calle';
+      conteoCalle[c] = (conteoCalle[c] || 0) + 1;
+    });
+    var calles = Object.keys(conteoCalle).sort();
+
     var f = filtroUnidades;
-    var chipsEstado = [['todas', 'Todas'], ['corriente', 'Al corriente'], ['vencido', 'Vencidas'], ['moroso', 'Morosas']]
-      .map(function (c) {
-        return '<button class="chip' + (f.estado === c[0] ? ' is-on' : '') + '" data-festado="' + c[0] + '">' + c[1] + '</button>';
-      }).join('');
-    var chipsTorre = listaTorres.length > 1
-      ? '<span style="width:1px;height:22px;background:var(--rule);margin:0 4px"></span>' +
-        '<button class="chip' + (f.torre === 'todas' ? ' is-on' : '') + '" data-ftorre="todas">Todas las torres</button>' +
-        listaTorres.map(function (t) {
-          return '<button class="chip' + (f.torre === t ? ' is-on' : '') + '" data-ftorre="' + esc(t) + '">' + esc(t) + '</button>';
+    var chipsEstado = [
+      ['todas', 'Todas', pad.length],
+      ['corriente', 'Al corriente', pad.filter(function (x) { return x.situacion.estado === 'corriente'; }).length],
+      ['vencido', 'Vencidas', pad.filter(function (x) { return x.situacion.estado === 'vencido'; }).length],
+      ['moroso', 'Morosas', pad.filter(function (x) { return x.situacion.estado === 'moroso'; }).length]
+    ].map(function (c) {
+      return '<button class="chip' + (f.estado === c[0] ? ' is-on' : '') + '" data-festado="' + c[0] + '">' +
+        esc(c[1]) + ' <em class="chip__n">' + c[2] + '</em></button>';
+    }).join('');
+
+    var chipsCalle = calles.length > 1
+      ? '<button class="chip' + (f.calle === 'todas' ? ' is-on' : '') + '" data-fcalle="todas">Todas las calles</button>' +
+        calles.map(function (c) {
+          return '<button class="chip' + (f.calle === c ? ' is-on' : '') + '" data-fcalle="' + esc(c) + '">' +
+            esc(c) + ' <em class="chip__n">' + conteoCalle[c] + '</em></button>';
         }).join('')
       : '';
 
+    /* --- Filtrado --- */
     var visibles = pad.filter(function (x) {
       if (f.estado !== 'todas' && x.situacion.estado !== f.estado) return false;
-      if (f.torre !== 'todas' && x.unidad.torre !== f.torre) return false;
+      if (f.calle !== 'todas' && (x.unidad.calle || 'Sin calle') !== f.calle) return false;
       if (f.texto) {
         var t = f.texto.toLowerCase();
-        var campo = (x.unidad.clave + ' ' + x.unidad.propietario + ' ' + (x.unidad.inquilino || '')).toLowerCase();
+        var campo = (x.unidad.clave + ' ' + x.unidad.propietario + ' ' +
+          (x.unidad.inquilino || '') + ' ' + (x.unidad.calle || '')).toLowerCase();
         if (campo.indexOf(t) < 0) return false;
       }
       return true;
     });
 
     var totalCuota = visibles.reduce(function (a, x) { return a + x.cuota; }, 0);
-    var totalSaldo = visibles.reduce(function (a, x) { return a + x.situacion.saldo; }, 0);
+    var totalSaldo = visibles.reduce(function (a, x) { return a + Math.max(0, x.situacion.saldo); }, 0);
 
+    /* --- Resumen del padrón --- */
+    var resumen = CC.ui.stats([
+      { lab: 'Casas', val: String(pad.length), nota: '<span>' + calles.length + ' calles</span>' },
+      {
+        lab: 'Cuotas del mes', val: CC.fmt.money(pad.reduce(function (a, x) { return a + x.cuota; }, 0)),
+        nota: '<span>promedio ' + esc(CC.fmt.money(pad.reduce(function (a, x) { return a + x.cuota; }, 0) / pad.length)) + ' por casa</span>'
+      },
+      {
+        lab: 'Casas con saldo',
+        val: String(pad.filter(function (x) { return x.situacion.saldo > 0.005; }).length),
+        tono: 'warn',
+        nota: '<span>' + esc(CC.fmt.pct(pad.filter(function (x) { return x.situacion.saldo > 0.005; }).length / pad.length)) + ' del padrón</span>'
+      },
+      {
+        lab: 'Por cobrar acumulado',
+        val: CC.fmt.money(pad.reduce(function (a, x) { return a + Math.max(0, x.situacion.saldo); }, 0)),
+        tono: 'crit',
+        nota: '<span>de todos los periodos</span>'
+      }
+    ]);
+
+    /* --- Renglones, con encabezado cuando cambia de calle --- */
+    var calleActual = null;
     var filas = visibles.map(function (x) {
       var u = x.unidad, s = x.situacion;
+      var encabezado = '';
+      if (f.calle === 'todas' && u.calle !== calleActual) {
+        calleActual = u.calle;
+        encabezado = '<tr class="ledger__grupo"><td colspan="7">' + esc(u.calle || 'Sin calle') +
+          ' <span class="muted">· ' + conteoCalle[u.calle || 'Sin calle'] + ' casas</span></td></tr>';
+      }
+
       var clase = s.estado === 'moroso' ? 'row--crit' : s.estado === 'vencido' ? 'row--warn' : '';
-      return '<tr class="' + clase + '">' +
+      return encabezado + '<tr class="' + clase + '">' +
         '<td><a href="#/unidad/' + esc(u.id) + '" class="strong">' + esc(u.clave) + '</a>' +
-        (u.torre ? '<div class="muted" style="font-size:11px">' + esc(u.torre) + '</div>' : '') + '</td>' +
+        (u.prototipo ? '<div class="muted" style="font-size:11px">Tipo ' + esc(u.prototipo) + ' · ' + esc(u.m2) + ' m²</div>' : '') +
+        '</td>' +
         '<td><div class="cellstack"><span>' + esc(u.inquilino || u.propietario || '—') + '</span>' +
         (u.inquilino ? '<small>Inquilino · prop. ' + esc(u.propietario) + '</small>'
           : '<small>' + esc(u.ocupacion || '') + '</small>') + '</div></td>' +
         '<td><div class="indiviso"><span class="indiviso__bar"><i style="width:' +
-        Math.min(100, x.indiviso * 100 * 8).toFixed(1) + '%"></i></span>' +
+        Math.min(100, x.indiviso * 100 * 90).toFixed(1) + '%"></i></span>' +
         '<span class="indiviso__val">' + esc(CC.fmt.pct(x.indiviso)) + '</span></div></td>' +
         '<td class="r">' + esc(CC.fmt.money2(x.cuota)) + '</td>' +
         '<td class="r ' + (s.saldo > 0.005 ? 'strong' : 'muted') + '">' +
@@ -151,42 +217,46 @@ CC.vistas.unidades = {
         '<td class="c">' + CC.ui.pill(s.estado) +
         (s.mesesVencidos > 1 ? '<div class="muted" style="font-size:10.5px;margin-top:2px">' + s.mesesVencidos + ' meses</div>' : '') +
         '</td>' +
+        '<td class="r noprint" style="white-space:nowrap">' +
+        '<a class="btn btn--sm btn--soft" href="#/unidad/' + esc(u.id) + '">Ver historial</a></td>' +
         '</tr>';
     }).join('');
 
-    return '<div class="section">' +
-      '<div class="section__head" style="align-items:center">' +
-      '<div class="search"><svg class="i"><use href="#i-buscar"/></svg>' +
-      '<input class="input" id="qUnidad" type="search" placeholder="Buscar unidad o residente" value="' + esc(f.texto) + '"></div>' +
-      '<div class="chips">' + chipsEstado + chipsTorre + '</div>' +
-      '</div>' +
+    return '<div class="section">' + resumen + '</div>' +
 
-      '<div class="panelbox"><div class="tablewrap"><table class="ledger">' +
+      '<div class="section">' +
+      '<div class="section__head noprint" style="align-items:center">' +
+      '<div class="search"><svg class="i"><use href="#i-buscar"/></svg>' +
+      '<input class="input" id="qUnidad" type="search" placeholder="Buscar casa, calle o residente" value="' + esc(f.texto) + '"></div>' +
+      '<div class="chips">' + chipsEstado + '</div>' +
+      '</div>' +
+      (chipsCalle ? '<div class="chips noprint">' + chipsCalle + '</div>' : '') +
+
+      '<div class="panelbox"><div class="tablewrap"><table class="ledger ledger--padron">' +
       '<thead><tr>' +
-      '<th>Unidad</th><th>Residente</th><th>Indiviso</th>' +
-      '<th class="r">Cuota mensual</th><th class="r">Saldo</th><th class="c">Estado</th>' +
+      '<th>Casa</th><th>Residente</th><th>Indiviso</th>' +
+      '<th class="r">Cuota mensual</th><th class="r">Saldo</th><th class="c">Estado</th><th class="noprint"></th>' +
       '</tr></thead>' +
-      '<tbody>' + (filas || '<tr><td colspan="6"><div class="empty"><strong>Sin coincidencias</strong>' +
-        '<p>Ninguna unidad cumple con el filtro activo.</p></div></td></tr>') + '</tbody>' +
+      '<tbody>' + (filas || '<tr><td colspan="7"><div class="empty"><strong>Sin coincidencias</strong>' +
+        '<p>Ninguna casa cumple con el filtro activo.</p></div></td></tr>') + '</tbody>' +
       (visibles.length ? '<tfoot><tr>' +
-        '<td colspan="3">' + visibles.length + ' de ' + pad.length + ' unidades</td>' +
+        '<td colspan="3">' + visibles.length + ' de ' + pad.length + ' casas</td>' +
         '<td class="r">' + esc(CC.fmt.money2(totalCuota)) + '</td>' +
-        '<td class="r">' + esc(CC.fmt.money2(Math.max(0, totalSaldo))) + '</td>' +
-        '<td></td></tr></tfoot>' : '') +
+        '<td class="r">' + esc(CC.fmt.money2(totalSaldo)) + '</td>' +
+        '<td colspan="2"></td></tr></tfoot>' : '') +
       '</table></div></div>' +
       '</div>';
   },
 
   montar: function (raiz, ctx, redibujar) {
     var q = raiz.querySelector('#qUnidad');
-    if (q) {
-      q.oninput = function () { filtroUnidades.texto = q.value; redibujar(true); };
-    }
+    if (q) q.oninput = function () { filtroUnidades.texto = q.value; redibujar(true); };
+
     raiz.querySelectorAll('[data-festado]').forEach(function (b) {
       b.onclick = function () { filtroUnidades.estado = b.getAttribute('data-festado'); redibujar(); };
     });
-    raiz.querySelectorAll('[data-ftorre]').forEach(function (b) {
-      b.onclick = function () { filtroUnidades.torre = b.getAttribute('data-ftorre'); redibujar(); };
+    raiz.querySelectorAll('[data-fcalle]').forEach(function (b) {
+      b.onclick = function () { filtroUnidades.calle = b.getAttribute('data-fcalle'); redibujar(); };
     });
   },
 
@@ -197,7 +267,7 @@ CC.vistas.unidades = {
 CC.vistas.unidad = {
   titulo: function (ctx) {
     var u = CC.Store.unidad(ctx.param);
-    return u ? 'Unidad ' + u.clave : 'Unidad';
+    return u ? 'Casa ' + u.clave : 'Casa';
   },
   sub: function (ctx) {
     var u = CC.Store.unidad(ctx.param);
@@ -220,7 +290,7 @@ CC.vistas.unidad = {
     var esc = CC.ui.esc;
     var u = CC.Store.unidad(ctx.param);
     if (!u) {
-      return '<div class="panelbox"><div class="empty"><strong>Unidad no encontrada</strong>' +
+      return '<div class="panelbox"><div class="empty"><strong>Casa no encontrada</strong>' +
         '<p>Puede que se haya eliminado.</p>' +
         '<a class="btn btn--ghost" href="#/unidades" style="margin-top:8px">Volver al padrón</a></div></div>';
     }
@@ -263,7 +333,7 @@ CC.vistas.unidad = {
       '<div class="recibo">' +
       '<div class="recibo__head">' +
       '<div><p class="eyebrow">Estado de cuenta</p>' +
-      '<h3>' + esc(cond.nombre || 'Condominio') + ' — Unidad ' + esc(u.clave) + '</h3>' +
+      '<h3>' + esc(cond.nombre || 'Condominio') + ' — Casa ' + esc(u.clave) + '</h3>' +
       '<p class="muted" style="font-size:12px;margin-top:4px">' +
       esc(u.inquilino || u.propietario) + (u.telefono ? ' · ' + esc(u.telefono) : '') + '</p></div>' +
       '<div class="recibo__folio">' +
@@ -274,7 +344,7 @@ CC.vistas.unidad = {
       '<div class="tablewrap"><table class="ledger">' +
       '<thead><tr><th>Fecha</th><th>Concepto</th><th class="r">Cargo</th><th class="r">Abono</th><th class="r">Saldo</th></tr></thead>' +
       '<tbody>' + (filas || '<tr><td colspan="5"><div class="empty"><strong>Sin movimientos</strong>' +
-        '<p>Esta unidad no tiene cargos ni pagos hasta este periodo.</p></div></td></tr>') + '</tbody>' +
+        '<p>Esta casa no tiene cargos ni pagos hasta este periodo.</p></div></td></tr>') + '</tbody>' +
       '</table></div>' +
       '<div class="recibo__tot">' +
       '<span>' + (s.saldo < -0.005 ? 'Saldo a favor' : 'Saldo al corte') + '</span>' +
@@ -382,7 +452,7 @@ CC.vistas.unidad = {
       '</div>';
 
     return '<p class="noprint"><a href="#/unidades" class="btn btn--sm btn--ghost">' +
-      CC.ui.icono('volver', 'i--sm') + ' Padrón de unidades</a></p>' +
+      CC.ui.icono('volver', 'i--sm') + ' Padrón de casas</a></p>' +
       cifras + cabecera + bitacora;
   },
 
@@ -452,14 +522,14 @@ CC.vistas.unidad = {
     var tel = digitos.length === 10 ? '52' + digitos : digitos;
     var esc = CC.ui.esc;
 
-    CC.ui.modal('Recordatorio de pago — ' + u.clave,
+    CC.ui.modal('Recordatorio de pago — casa ' + u.clave,
       '<p class="field__hint" style="margin-bottom:10px">Revisa el texto antes de enviarlo. Se arma con el saldo real de la unidad.</p>' +
       '<textarea class="input" id="txtRec" rows="12" style="font-size:13px">' + esc(texto) + '</textarea>' +
       '<div class="formactions">' +
       '<button type="button" class="btn btn--ghost" id="bCopiar">Copiar texto</button>' +
       (tel
         ? '<a class="btn" id="bWa" target="_blank" rel="noopener" href="https://wa.me/' + esc(tel) + '?text=' + encodeURIComponent(texto) + '">Abrir en WhatsApp</a>'
-        : '<span class="field__hint">Esta unidad no tiene teléfono capturado</span>') +
+        : '<span class="field__hint">Esta casa no tiene teléfono capturado</span>') +
       '</div>',
       function (cuerpo) {
         var ta = cuerpo.querySelector('#txtRec');
