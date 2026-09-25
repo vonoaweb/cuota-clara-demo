@@ -166,6 +166,36 @@ input[type=range]::-moz-range-thumb{
   border-left:2px solid #07102a;border-bottom:2px solid #07102a;transform:rotate(-45deg);
 }
 
+/* ---------- Términos ---------- */
+.claves{list-style:none;margin:14px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}
+.claves li{padding:13px 15px;border-radius:14px;background:var(--surface-2);border:1px solid var(--line)}
+.claves strong{display:block;font-family:var(--font-display);font-size:14.5px;line-height:1.35;color:#fff}
+.claves li > span{display:block;margin-top:3px;font-size:13px;color:var(--soft)}
+
+.terminos{margin-top:16px;border-top:1px solid var(--line)}
+.terminos summary{
+  list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;
+  padding:16px 2px 2px;font-family:var(--font-display);font-weight:600;font-size:15px;color:var(--vw-cyan);
+}
+.terminos summary::-webkit-details-marker{display:none}
+.terminos summary .sum{flex:1 1 auto;display:flex;flex-direction:column;gap:1px}
+.terminos summary small{font-family:var(--font-body);font-weight:400;font-size:12.5px;color:var(--vw-slate)}
+.terminos summary::after{
+  content:"";flex:none;width:8px;height:8px;margin:0 4px 3px 2px;
+  border-right:2px solid currentColor;border-bottom:2px solid currentColor;
+  transform:rotate(45deg);transition:transform .2s ease;
+}
+.terminos[open] summary::after{transform:rotate(-135deg);margin-bottom:-3px}
+.terminos h3{
+  margin:22px 0 2px;font-family:var(--font-display);font-size:11px;font-weight:600;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--vw-cyan);
+}
+.terminos dl{margin:0}
+.terminos dt{margin-top:12px;font-weight:600;font-size:14.5px;color:#fff}
+.terminos dd{margin:3px 0 0;font-size:14px;line-height:1.6;color:var(--soft)}
+.terminos__base{margin-top:22px;padding-top:14px;border-top:1px solid var(--line);font-size:12.5px;color:var(--vw-slate)}
+.terminos__base a{color:var(--vw-blue);text-decoration:underline;text-underline-offset:2px}
+
 /* ---------- Cierre ---------- */
 .cta{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
 .cta .btn{flex:1 1 210px}
@@ -190,6 +220,11 @@ input[type=range]::-moz-range-thumb{
   .lead,.resultado__u,.barra__lab,.lista li,.chips li,.ahorro{color:#333}
   .barra__track{background:#e5e7eb}
   .barra__fill,.barra__fill--otro,input[type=range]{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .claves li{background:#fff;border:1px solid #bbb}
+  .claves strong,.terminos dt{color:#111}
+  .claves span,.terminos dd,.terminos__base{color:#333}
+  .terminos h3,.terminos summary{color:#0A6E5A}
+  .terminos summary small,.terminos summary::after{display:none}
 }
 </style>
 </head>
@@ -219,11 +254,11 @@ input[type=range]::-moz-range-thumb{
   <!-- Portada: el precio, a la vista -->
   <section class="hero">
     <p class="eyebrow" id="tCliente">Propuesta para el Comité de Administración</p>
-    <h1>Un solo pago. El sistema <span class="grad">es suyo.</span></h1>
+    <h1>Se compra una vez. El sistema <span class="grad">es suyo.</span></h1>
     <p class="lead">La administración de sus 150 casas, instalada en su computadora.</p>
     <div class="precio">
       <span class="precio__n" id="tPrecio">$23,000</span>
-      <span class="precio__u">+ IVA · pago único · hasta <span id="tMaxMeses">12</span> meses sin intereses</span>
+      <span class="precio__u">+ IVA · precio total · de contado o hasta <span id="tMaxMeses">12</span> meses sin intereses</span>
     </div>
     <a class="btn btn--ghost" href="https://vonoaweb.github.io/cuota-clara-demo/" target="_blank" rel="noopener">
       Ver el sistema funcionando →
@@ -290,8 +325,121 @@ input[type=range]::-moz-range-thumb{
       <li>Todo lo que vieron en el sistema, con sus 150 casas y su reglamento ya capturados</li>
       <li>Instalación en la computadora de la administración</li>
       <li>Capacitación al comité</li>
-      <li>Listo en 3 semanas, con 30 días de garantía</li>
+      <li>Listo en <span data-t="semanasEntrega">3</span> semanas, con <span data-t="garantiaDias">30</span> días de garantía</li>
     </ul>
+  </section>
+
+  <!-- Términos: lo clave a la vista, el detalle a un toque.
+       Cada respuesta traduce una cláusula de vonoaweb.com/terminos-condiciones.html;
+       lo único que esta propuesta cambia son las mensualidades (su cláusula 3
+       permite que la propuesta particular prevalezca). -->
+  <section class="card" aria-labelledby="hTerm">
+    <h2 id="hTerm">Términos y condiciones</h2>
+
+    <ul class="claves">
+      <li><strong>Es suyo al terminar de pagar</strong><span>Sin renta, para siempre.</span></li>
+      <li><strong><span data-t="garantiaDias">30</span> días de garantía</strong><span>Cualquier falla del sistema se corrige sin costo.</span></li>
+      <li><strong>El mantenimiento lo dejan cuando quieran</strong><span>El sistema sigue funcionando.</span></li>
+      <li><strong>Su información vive en su computadora</strong><span>No nos quedamos con copia.</span></li>
+    </ul>
+
+    <details class="terminos" id="dTerminos">
+      <summary><span class="sum">Ver todos los términos <small id="tNumPreguntas">15 preguntas · 2 minutos</small></span></summary>
+
+      <h3>Pagos</h3>
+      <dl>
+        <dt>¿Cómo se paga?</dt>
+        <dd>De contado: la mitad al firmar y la otra mitad al entregar. A meses: la
+            primera mensualidad al firmar y las demás el mismo día de cada mes, sin
+            intereses. Por transferencia (SPEI) o depósito.</dd>
+
+        <dt>¿Y si se atrasa un pago?</dt>
+        <dd>Con más de 5 días hábiles de atraso se pausa el soporte hasta ponerse al
+            corriente. El sistema sigue funcionando.</dd>
+
+        <dt>¿Nos dan factura?</dt>
+        <dd>Sí, por cada pago. Pídanla al pagar, con su RFC, razón social, régimen
+            fiscal y correo.</dd>
+      </dl>
+
+      <h3>Lo que reciben</h3>
+      <dl>
+        <dt>¿Desde cuándo es nuestro el sistema?</dt>
+        <dd>Desde el último pago, su copia es suya para siempre y la usan sin pagar
+            renta. La información es 100% del condominio. El programa sigue siendo de
+            Vonoa Web, que puede ofrecerlo a otros condominios, pero nunca con su
+            información.</dd>
+
+        <dt>¿Cuánto tarda?</dt>
+        <dd><span data-t="semanasEntrega">3</span> semanas, contadas desde el primer pago
+            y desde que nos entregan su información: padrón, saldos y reglamento. Si la
+            información se retrasa, la fecha se recorre lo mismo.</dd>
+
+        <dt>¿Qué cubre la garantía?</dt>
+        <dd>Durante <span data-t="garantiaDias">30</span> días naturales después de la
+            entrega corregimos sin costo cualquier falla del sistema. No cubre fallas de
+            la computadora, virus ni cambios hechos por otras personas.</dd>
+
+        <dt>¿Y si queremos cambios o algo nuevo?</dt>
+        <dd>Incluye <span data-t="rondasAjustes">2</span> rondas de ajustes sobre lo
+            entregado. Lo que sea nuevo se cotiza antes, y solo se hace si lo aprueban.</dd>
+
+        <dt>¿Qué no incluye?</dt>
+        <dd>Facturar las cuotas de los vecinos ante el SAT, app en tiendas, ni la
+            computadora.</dd>
+      </dl>
+
+      <h3>Mantenimiento</h3>
+      <dl>
+        <dt>¿Qué incluye el mantenimiento?</dt>
+        <dd>Actualizaciones, corrección de fallas, ajustes menores y soporte por
+            WhatsApp de lunes a viernes, de 9 a 18 h. <span id="tMantTerm">El primer
+            año va incluido; después son $450 al mes, pagados por adelantado.</span></dd>
+
+        <dt>¿Lo podemos dejar?</dt>
+        <dd>Sí, cuando quieran, avisando con 15 días. El sistema sigue funcionando; solo
+            dejan de recibir soporte y actualizaciones. Si algún día cambia el precio,
+            se avisa con 30 días.</dd>
+      </dl>
+
+      <h3>Su información</h3>
+      <dl>
+        <dt>¿Quién ve nuestra información?</dt>
+        <dd>Vive en su computadora. La usamos solo para cargar el sistema y para darles
+            soporte cuando nos la compartan, y al entregar borramos nuestras copias.
+            Nunca la mostramos a nadie. Si prefieren que no digamos que trabajamos con
+            ustedes, avísennos antes de empezar.</dd>
+
+        <dt>¿Y si se descompone la computadora?</dt>
+        <dd>La información está solo ahí y nosotros no guardamos copia. Por eso el
+            sistema tiene un botón para guardarla: háganlo cada semana en una memoria
+            USB. Sin esa copia, la información se pierde con el equipo.</dd>
+
+        <dt>¿Lo podemos usar en varias computadoras?</dt>
+        <dd>Se instala en una. Si lo usan en dos, cada una tendría datos distintos.
+            Para cambiar de computadora, se pasa todo con el archivo de respaldo.</dd>
+
+        <dt>¿Y si Vonoa Web deja de existir?</dt>
+        <dd>El sistema sigue funcionando en su computadora. No depende de nosotros.</dd>
+      </dl>
+
+      <h3>Si cambian de opinión</h3>
+      <dl>
+        <dt>¿Y si cancelamos?</dt>
+        <dd>Antes de que empecemos: les devolvemos el 80% del primer pago. Ya empezado
+            el trabajo: el primer pago no se devuelve. Con más de la mitad hecha o ya
+            entregado: se paga el total, en las mensualidades acordadas.</dd>
+      </dl>
+
+      <p class="terminos__base">
+        Lo que no diga aquí se rige por nuestros
+        <a href="https://vonoaweb.com/terminos-condiciones.html" target="_blank" rel="noopener">Términos y Condiciones</a>
+        y nuestro
+        <a href="https://vonoaweb.com/aviso-privacidad.html" target="_blank" rel="noopener">Aviso de Privacidad</a>.
+        Donde esta propuesta diga algo distinto, manda la propuesta. Se acepta
+        firmándola o haciendo el primer pago.
+      </p>
+    </details>
   </section>
 
   <div class="cta">
@@ -301,9 +449,8 @@ input[type=range]::-moz-range-thumb{
   </div>
 
   <p class="letra" id="tLetra">
-    Precios en pesos, más IVA. El primer pago se hace al firmar. Propuesta del
-    25 de septiembre de 2026, vigente 30 días. No incluye facturación ante el SAT
-    ni app en tiendas.
+    Precios en pesos mexicanos, más IVA. Propuesta del 25 de septiembre de 2026,
+    vigente 30 días.
   </p>
 
   <footer class="pie">
@@ -326,6 +473,9 @@ var PROPUESTA = {
   mantenimientoMensual: 450,         // se cobra al terminar los meses incluidos
   mesesMantenimientoIncluidos: 12,   // el primer año de mantenimiento va incluido
   competidorMensual: 1500,           // lo que pagan hoy a CondoVive (dato del cliente)
+  semanasEntrega: 3,
+  garantiaDias: 30,                  // igual que la cláusula 9.1 de los términos generales
+  rondasAjustes: 2,
   whatsapp: '5215644645574'
 };
 
@@ -360,7 +510,7 @@ var PROPUESTA = {
 
     if (meses === 1) {
       $('tMensual').textContent = dinero(P.precio);
-      $('tDetalle').textContent = 'en un solo pago';
+      $('tDetalle').textContent = 'de contado: la mitad al firmar y la mitad al entregar';
     } else {
       $('tMensual').textContent = dinero(P.precio / meses);
       $('tDetalle').textContent = 'al mes, durante ' + meses + ' meses · sin intereses';
@@ -407,8 +557,28 @@ var PROPUESTA = {
     : '<strong>' + (incl === 12 ? 'El primer año va incluido.' : 'Los primeros ' + incl + ' meses van incluidos.') +
       '</strong> Después, <strong>' + dinero(P.mantenimientoMensual) + ' al mes</strong>.';
 
-  $('tLetra').textContent = 'Precios en pesos, más IVA. El primer pago se hace al firmar. ' +
-    'Propuesta del ' + P.fecha + ', vigente 30 días. No incluye facturación ante el SAT ni app en tiendas.';
+  $('tLetra').textContent = 'Precios en pesos mexicanos, más IVA. Propuesta del ' +
+    P.fecha + ', vigente 30 días.';
+
+  /* Números de los términos que dependen del trato */
+  document.querySelectorAll('[data-t]').forEach(function (n) {
+    var v = P[n.getAttribute('data-t')];
+    if (v !== undefined) n.textContent = v;
+  });
+  $('tMantTerm').textContent = incl === 0
+    ? 'Cuesta ' + dinero(P.mantenimientoMensual) + ' al mes desde la entrega, pagados por adelantado.'
+    : (incl === 12 ? 'El primer año va incluido' : 'Los primeros ' + incl + ' meses van incluidos') +
+      '; después son ' + dinero(P.mantenimientoMensual) + ' al mes, pagados por adelantado.';
+  var preguntas = document.querySelectorAll('#dTerminos dt').length;
+  $('tNumPreguntas').textContent = preguntas + ' preguntas · 2 minutos';
+
+  /* Al imprimir o guardar PDF, los términos salen completos aunque estén plegados */
+  var estabaAbierto = false;
+  window.addEventListener('beforeprint', function () {
+    estabaAbierto = $('dTerminos').open;
+    $('dTerminos').open = true;
+  });
+  window.addEventListener('afterprint', function () { $('dTerminos').open = estabaAbierto; });
 
   $('rMeses').addEventListener('input', function (e) {
     meses = Number(e.target.value);
