@@ -4,263 +4,201 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Propuesta · Sistema de administración de condominio — Vonoa Web</title>
-<meta name="description" content="Propuesta de Vonoa Web para el sistema de administración de un condominio de 150 casas.">
+<meta name="description" content="Propuesta de Vonoa Web: sistema de administración para un condominio de 150 casas.">
 <meta name="theme-color" content="#070F21">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap">
 <style>
-/* ===========================================================
-   Cotización — sistema de marca de Vonoa Web
-   Tokens tomados de vonoaweb-landing/styles.css
-   =========================================================== */
+/* Sistema de marca de Vonoa Web (tomado de vonoaweb-landing/styles.css) */
 :root{
   --vw-deep-space:#070F21;
-  --vw-navy:#02215D;
   --vw-cyan:#2EE9B9;
   --vw-blue:#1CA0F4;
-  --vw-white:#FFFFFF;
   --vw-slate:#94A3B8;
-  --vw-midnight:#0F2040;
   --vw-ink:#E6EDF9;
   --vw-gradient:linear-gradient(135deg,#2EE9B9 0%,#1CA0F4 100%);
-
-  --line:rgba(148,163,184,.18);
-  --line-strong:rgba(148,163,184,.34);
   --surface:#0C1730;
   --surface-2:#10233E;
-
+  --line:rgba(148,163,184,.18);
+  --line-strong:rgba(148,163,184,.34);
+  --soft:#B6C2D8;
   --font-display:'Sora',system-ui,-apple-system,sans-serif;
   --font-body:'DM Sans',system-ui,-apple-system,sans-serif;
-
-  --radius-sm:8px; --radius-md:12px; --radius-lg:16px; --radius-xl:20px;
-  --shadow-card:0 20px 60px rgba(0,0,0,.4);
-  --gutter:clamp(18px,4.5vw,40px);
 }
-
 *,*::before,*::after{box-sizing:border-box}
-html{scroll-behavior:smooth}
 body{
   margin:0;background:var(--vw-deep-space);color:var(--vw-ink);
-  font-family:var(--font-body);font-size:15px;line-height:1.65;
+  font-family:var(--font-body);font-size:15px;line-height:1.6;
   -webkit-font-smoothing:antialiased;
 }
-h1,h2,h3,h4{font-family:var(--font-display);font-weight:700;letter-spacing:-.015em;margin:0;text-wrap:balance}
+h1,h2{font-family:var(--font-display);font-weight:700;letter-spacing:-.015em;margin:0;text-wrap:balance}
 p{margin:0}
 a{color:inherit;text-decoration:none}
-img{max-width:100%}
-:focus-visible{outline:2px solid var(--vw-cyan);outline-offset:3px;border-radius:4px}
+:focus-visible{outline:2px solid var(--vw-cyan);outline-offset:3px;border-radius:6px}
 
-.wrap{width:min(1080px,100%);margin:0 auto;padding-inline:var(--gutter)}
+.wrap{width:min(620px,100%);margin:0 auto;padding-inline:18px}
 
 /* ---------- Barra ---------- */
 .bar{
-  position:sticky;top:0;z-index:40;
+  position:sticky;top:0;z-index:10;
   background:rgba(7,15,33,.92);backdrop-filter:blur(12px);
   border-bottom:1px solid var(--line);
   padding-top:env(safe-area-inset-top,0px);
 }
-.bar__in{display:flex;align-items:center;gap:14px;height:62px}
-.brand{display:flex;align-items:center;gap:10px;flex:1 1 auto;min-width:0}
-.wm{font-family:var(--font-display);font-weight:700;font-size:17px;letter-spacing:.02em;white-space:nowrap}
-.wm em{font-style:normal;color:var(--vw-cyan);font-size:9.5px;letter-spacing:.3em;margin-left:4px}
-.bar__folio{font-size:11.5px;color:var(--vw-slate);letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.bar .wrap{display:flex;align-items:center;gap:12px;height:58px}
+.brand{display:flex;align-items:center;gap:9px;flex:1 1 auto}
+.wm{font-family:var(--font-display);font-weight:700;font-size:16px;letter-spacing:.02em}
+.wm em{font-style:normal;color:var(--vw-cyan);font-size:9px;letter-spacing:.3em;margin-left:4px}
+.folio{font-size:11px;letter-spacing:.08em;color:var(--vw-slate)}
 
 /* ---------- Portada ---------- */
-.hero{padding:clamp(44px,8vw,86px) 0 clamp(34px,5vw,54px);position:relative;overflow:hidden}
-.hero::before{
-  content:"";position:absolute;inset:-40% 30% 40% -20%;
-  background:radial-gradient(60% 60% at 40% 40%,rgba(46,233,185,.12),transparent 70%);
-  pointer-events:none;
-}
-.hero::after{
-  content:"";position:absolute;inset:20% -25% -40% 40%;
-  background:radial-gradient(55% 55% at 60% 40%,rgba(28,160,244,.13),transparent 70%);
-  pointer-events:none;
-}
-.hero>*{position:relative}
+.hero{padding:34px 0 26px}
 .eyebrow{
   font-family:var(--font-display);font-size:11px;font-weight:600;
-  letter-spacing:.22em;text-transform:uppercase;color:var(--vw-cyan);
+  letter-spacing:.18em;text-transform:uppercase;color:var(--vw-cyan);
 }
-.hero h1{font-size:clamp(29px,6.2vw,54px);line-height:1.08;margin-top:16px;max-width:17ch}
-.hero h1 .grad{
-  background:var(--vw-gradient);-webkit-background-clip:text;background-clip:text;color:transparent;
+.hero h1{font-size:clamp(28px,7.4vw,40px);line-height:1.1;margin-top:12px}
+.grad{background:var(--vw-gradient);-webkit-background-clip:text;background-clip:text;color:transparent}
+.lead{margin-top:10px;color:var(--soft);font-size:16px}
+.precio{margin-top:20px;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px}
+.precio__n{
+  font-family:var(--font-display);font-weight:700;letter-spacing:-.03em;
+  font-size:clamp(44px,12vw,58px);line-height:1;
 }
-.hero__lead{margin-top:20px;font-size:clamp(15px,2.1vw,18px);color:#B6C2D8;max-width:56ch;line-height:1.7}
-.hero__meta{
-  display:flex;flex-wrap:wrap;gap:10px 30px;margin-top:30px;
-  padding-top:22px;border-top:1px solid var(--line);
-}
-.meta{display:flex;flex-direction:column;gap:2px}
-.meta dt{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--vw-slate)}
-.meta dd{margin:0;font-family:var(--font-display);font-weight:600;font-size:14.5px}
+.precio__u{color:var(--vw-slate);font-size:13.5px}
 
-/* ---------- Secciones ---------- */
-section{padding:clamp(40px,6vw,70px) 0;border-top:1px solid var(--line)}
-.sec__head{margin-bottom:clamp(24px,3.5vw,38px)}
-.sec__head h2{font-size:clamp(21px,3.6vw,31px);line-height:1.2;margin-top:12px;max-width:22ch}
-.sec__head p{margin-top:12px;color:#B6C2D8;max-width:62ch;font-size:15px}
-
-/* ---------- Lo que nos dijeron ---------- */
-.dijeron{display:grid;grid-template-columns:repeat(auto-fit,minmax(248px,1fr));gap:14px}
-.quote{
-  background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);
-  padding:20px 22px;display:flex;flex-direction:column;gap:10px;
-}
-.quote__txt{font-family:var(--font-display);font-size:15px;font-weight:500;line-height:1.5;color:var(--vw-white)}
-.quote__txt::before{content:"“";color:var(--vw-cyan);margin-right:2px}
-.quote__txt::after{content:"”";color:var(--vw-cyan)}
-.quote__res{font-size:13px;color:var(--vw-slate);line-height:1.6;padding-top:10px;border-top:1px solid var(--line)}
-.quote__res b{color:var(--vw-cyan);font-weight:600}
-
-/* ---------- Qué incluye ---------- */
-.mods{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:1px;background:var(--line);
-  border:1px solid var(--line);border-radius:var(--radius-lg);overflow:hidden}
-.mod{background:var(--surface);padding:22px;display:flex;flex-direction:column;gap:8px}
-.mod__n{font-family:var(--font-display);font-size:11px;font-weight:700;letter-spacing:.1em;color:var(--vw-cyan)}
-.mod h3{font-size:16px}
-.mod p{font-size:13.5px;color:#9FB0C9;line-height:1.6}
-.mod__tag{
-  align-self:flex-start;margin-top:4px;font-size:10.5px;font-weight:600;letter-spacing:.08em;
-  text-transform:uppercase;padding:3px 9px;border-radius:999px;
-  background:rgba(46,233,185,.1);color:var(--vw-cyan);border:1px solid rgba(46,233,185,.28);
-}
-.mod__tag--srv{background:rgba(28,160,244,.1);color:var(--vw-blue);border-color:rgba(28,160,244,.3)}
-
-/* ---------- Demo ---------- */
-.demo{
-  background:linear-gradient(135deg,#02215D 0%,#0A1A3F 60%,#070F21 100%);
-  border:1px solid var(--line-strong);border-radius:var(--radius-xl);
-  padding:clamp(24px,4vw,40px);box-shadow:var(--shadow-card);
-  display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px;align-items:center;
-}
-@media (max-width:660px){.demo{grid-template-columns:minmax(0,1fr)}}
-.demo h3{font-size:clamp(19px,3vw,25px);line-height:1.25}
-.demo p{margin-top:10px;color:#B6C2D8;font-size:14.5px;max-width:52ch}
 .btn{
-  display:inline-flex;align-items:center;justify-content:center;gap:9px;
-  height:50px;padding:0 26px;border-radius:999px;
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  min-height:48px;padding:0 22px;border-radius:999px;border:0;cursor:pointer;
   font-family:var(--font-display);font-weight:600;font-size:14.5px;
-  background:var(--vw-gradient);color:#07102a;white-space:nowrap;
-  transition:transform .16s ease,filter .16s ease;
+  background:var(--vw-gradient);color:#07102a;
+  transition:transform .15s ease,filter .15s ease;
 }
-.btn:hover{transform:translateY(-2px);filter:brightness(1.07)}
+.btn:hover{transform:translateY(-1px);filter:brightness(1.06)}
 .btn--ghost{background:transparent;color:var(--vw-ink);border:1px solid var(--line-strong)}
 .btn--ghost:hover{border-color:var(--vw-cyan);color:var(--vw-cyan)}
+.hero .btn{margin-top:20px}
 
-/* ---------- Inversión ---------- */
-.planes{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:18px;align-items:start}
-.plan{
-  background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-xl);
-  padding:26px 24px 24px;display:flex;flex-direction:column;gap:16px;position:relative;
+/* ---------- Tarjetas ---------- */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:22px 20px}
+.card+.card{margin-top:14px}
+.card h2{font-size:19px}
+.lab{
+  font-family:var(--font-display);font-size:11px;font-weight:600;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--vw-cyan);
 }
-.plan--reco{border-color:rgba(46,233,185,.45);background:var(--surface-2);box-shadow:var(--shadow-card)}
-.plan__flag{
-  position:absolute;top:-11px;left:24px;
-  font-family:var(--font-display);font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
-  background:var(--vw-gradient);color:#07102a;padding:4px 12px;border-radius:999px;
-}
-.plan__op{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--vw-slate)}
-.plan h3{font-size:20px;margin-top:2px}
-.plan__para{font-size:13.5px;color:#9FB0C9;line-height:1.6}
-.precio{padding:16px 0;border-block:1px solid var(--line)}
-.precio__n{font-family:var(--font-display);font-size:clamp(30px,5.2vw,40px);font-weight:700;line-height:1;letter-spacing:-.025em}
-.precio__u{font-size:13px;color:var(--vw-slate);margin-top:7px}
-.precio__mes{margin-top:12px;padding-top:12px;border-top:1px dashed var(--line-strong)}
-.precio__mes .precio__n{font-size:clamp(21px,3.4vw,26px)}
-.lista{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px;flex:1 1 auto}
-.lista li{display:grid;grid-template-columns:18px minmax(0,1fr);gap:10px;font-size:13.5px;line-height:1.55;color:#C3CEE0}
-.lista li::before{content:"";width:16px;height:16px;border-radius:50%;margin-top:3px;
-  background:rgba(46,233,185,.13);border:1px solid rgba(46,233,185,.4);
-  background-image:linear-gradient(135deg,transparent 45%,var(--vw-cyan) 45%,var(--vw-cyan) 55%,transparent 55%);}
-.lista li.no{color:#8494AC}
-.lista li.no::before{background:rgba(148,163,184,.08);border-color:var(--line-strong);background-image:none}
+.bloque{margin-top:20px;padding-top:18px;border-top:1px solid var(--line)}
 
-/* ---------- Comparativo ---------- */
-.tablabox{border:1px solid var(--line);border-radius:var(--radius-lg);overflow:hidden;background:var(--surface)}
-.scroller{overflow-x:auto;-webkit-overflow-scrolling:touch}
-table{width:100%;border-collapse:collapse;font-size:14px}
-th,td{padding:14px 16px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
-thead th{
-  background:var(--surface-2);font-family:var(--font-display);font-size:11px;font-weight:600;
-  letter-spacing:.1em;text-transform:uppercase;color:var(--vw-slate);white-space:nowrap;
-}
-tbody tr:last-child td{border-bottom:0}
-td.n{font-variant-numeric:tabular-nums;white-space:nowrap}
-.si{color:var(--vw-cyan);font-weight:600}
-.no2{color:#8494AC}
-tfoot td{background:var(--surface-2);font-family:var(--font-display);font-weight:600;border-top:1px solid var(--line-strong)}
-.fuente{margin-top:14px;font-size:12px;color:var(--vw-slate);line-height:1.6}
-.fuente a{color:var(--vw-blue);text-decoration:underline;text-underline-offset:2px}
+/* ---------- Cotizador ---------- */
+.pregunta{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:16px}
+.pregunta label{font-weight:600;color:#fff}
+.pregunta strong{font-family:var(--font-display);color:var(--vw-cyan);white-space:nowrap}
 
-/* ---------- Tiempos ---------- */
-.fases{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:0}
-.fase{display:grid;grid-template-columns:auto minmax(0,1fr);gap:18px;padding:18px 0;border-bottom:1px solid var(--line)}
-.fase:last-child{border-bottom:0}
-.fase__sem{
-  font-family:var(--font-display);font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
-  color:var(--vw-cyan);white-space:nowrap;padding-top:2px;min-width:74px;
+input[type=range]{
+  --p:100%;
+  -webkit-appearance:none;appearance:none;
+  width:100%;height:40px;margin:6px 0 0;background:transparent;cursor:pointer;
 }
-.fase h4{font-size:15.5px;margin-bottom:5px}
-.fase p{font-size:13.5px;color:#9FB0C9;line-height:1.6}
+input[type=range]::-webkit-slider-runnable-track{
+  height:10px;border-radius:999px;
+  background:var(--vw-gradient) 0/var(--p) 100% no-repeat, rgba(148,163,184,.22);
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;appearance:none;
+  width:30px;height:30px;margin-top:-10px;border-radius:50%;
+  background:#fff;border:4px solid var(--vw-blue);
+  box-shadow:0 4px 14px rgba(0,0,0,.45);
+}
+input[type=range]::-moz-range-track{height:10px;border-radius:999px;background:rgba(148,163,184,.22)}
+input[type=range]::-moz-range-progress{height:10px;border-radius:999px;background:var(--vw-gradient)}
+input[type=range]::-moz-range-thumb{
+  width:22px;height:22px;border-radius:50%;
+  background:#fff;border:4px solid var(--vw-blue);box-shadow:0 4px 14px rgba(0,0,0,.45);
+}
+.marcas{display:flex;justify-content:space-between;font-size:12px;color:var(--vw-slate)}
 
-/* ---------- Notas ---------- */
-.nota{
-  border-radius:var(--radius-lg);padding:18px 20px;font-size:13.5px;line-height:1.65;
-  background:rgba(28,160,244,.07);border:1px solid rgba(28,160,244,.25);color:#C3CEE0;
+.resultado{
+  display:block;margin-top:16px;padding:18px 16px;border-radius:16px;
+  background:var(--surface-2);text-align:center;
 }
-.nota strong{color:var(--vw-white)}
-.nota--warn{background:rgba(46,233,185,.06);border-color:rgba(46,233,185,.28)}
-.dosc{display:grid;grid-template-columns:repeat(auto-fit,minmax(272px,1fr));gap:16px}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);padding:22px}
-.card h3{font-size:16px;margin-bottom:12px}
-.card ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:8px}
-.card li{font-size:13.5px;color:#9FB0C9;line-height:1.6}
-.card li::marker{color:var(--vw-cyan)}
+.resultado__n{
+  display:block;font-family:var(--font-display);font-weight:700;
+  font-size:clamp(36px,10vw,46px);letter-spacing:-.025em;line-height:1.1;
+}
+.resultado__u{display:block;color:var(--soft);font-size:14.5px;margin-top:4px}
+.resultado__ref{display:block;color:var(--vw-slate);font-size:12.5px;margin-top:10px}
+
+.bloque p{margin-top:8px;font-size:15px}
+.bloque p strong{color:#fff}
+.chips{list-style:none;display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 0;padding:0}
+.chips li{font-size:12.5px;padding:5px 11px;border-radius:999px;border:1px solid var(--line-strong);color:#C3CEE0}
+
+.comp__head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px}
+.seg{display:inline-flex;padding:3px;border-radius:999px;border:1px solid var(--line-strong);background:var(--vw-deep-space)}
+.seg button{
+  border:0;background:transparent;cursor:pointer;color:var(--soft);
+  font:600 12.5px var(--font-display);padding:7px 13px;border-radius:999px;
+}
+.seg button.is-on{background:var(--vw-gradient);color:#07102a}
+
+.barra{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;margin-top:14px}
+.barra__lab{font-size:13.5px;color:#C3CEE0}
+.barra__val{font-family:var(--font-display);font-weight:600;font-size:15px;font-variant-numeric:tabular-nums}
+.barra__track{grid-column:1/-1;height:14px;border-radius:999px;background:rgba(148,163,184,.12);overflow:hidden}
+.barra__fill{display:block;height:100%;width:0;border-radius:999px;background:var(--vw-gradient);transition:width .4s ease}
+.barra__fill--otro{background:rgba(148,163,184,.5)}
+.ahorro{margin-top:16px;font-size:15px}
+.ahorro strong{color:var(--vw-cyan)}
+
+/* ---------- Incluye ---------- */
+.lista{list-style:none;margin:14px 0 0;padding:0;display:flex;flex-direction:column;gap:11px}
+.lista li{
+  position:relative;display:grid;grid-template-columns:20px minmax(0,1fr);gap:11px;
+  font-size:15px;color:#C3CEE0;
+}
+.lista li::before{
+  content:"";width:18px;height:18px;margin-top:3px;border-radius:50%;
+  background:var(--vw-gradient);
+}
+.lista li::after{
+  content:"";position:absolute;left:5px;top:8px;width:8px;height:4px;
+  border-left:2px solid #07102a;border-bottom:2px solid #07102a;transform:rotate(-45deg);
+}
 
 /* ---------- Cierre ---------- */
-.cierre{
-  background:linear-gradient(135deg,#02215D 0%,#0A1A3F 60%,#070F21 100%);
-  border:1px solid var(--line-strong);border-radius:var(--radius-xl);
-  padding:clamp(28px,5vw,48px);text-align:center;box-shadow:var(--shadow-card);
+.cta{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
+.cta .btn{flex:1 1 210px}
+.letra{margin-top:16px;font-size:12px;color:var(--vw-slate);line-height:1.6}
+.pie{
+  margin-top:30px;padding:22px 0 calc(28px + env(safe-area-inset-bottom,0px));
+  border-top:1px solid var(--line);font-size:12.5px;color:var(--vw-slate);
 }
-.cierre h2{font-size:clamp(22px,4vw,32px);max-width:20ch;margin-inline:auto}
-.cierre p{margin-top:14px;color:#B6C2D8;max-width:48ch;margin-inline:auto;font-size:15px}
-.acciones{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-top:26px}
-
-.pie{padding:34px 0 calc(40px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);color:var(--vw-slate);font-size:12.5px;line-height:1.7}
 .pie a{color:var(--vw-blue)}
-.pie__row{display:flex;flex-wrap:wrap;gap:8px 24px;justify-content:space-between;align-items:baseline}
 
-@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
 
-/* ---------- Impresión / guardar como PDF ---------- */
+/* ---------- Guardar como PDF ---------- */
 @media print{
   body{background:#fff;color:#111}
-  .bar,.noprint{display:none!important}
-  .hero::before,.hero::after{display:none}
-  section{border-top:1px solid #ccc;padding:18px 0;break-inside:avoid}
-  .quote,.mod,.plan,.card,.tablabox,.demo,.cierre{
-    background:#fff!important;border:1px solid #bbb!important;box-shadow:none!important;color:#111;
-  }
-  .mods{background:#bbb}
-  .hero h1 .grad{color:#02215D;-webkit-text-fill-color:#02215D}
-  .eyebrow,.plan__op,.fase__sem,.mod__n{color:#0A6E5A}
-  h1,h2,h3,h4,.precio__n,.quote__txt{color:#111}
-  p,td,li,.mod p,.card li,.plan__para{color:#333}
-  thead th{background:#eee;color:#333}
-  .btn{display:none}
-  a[href]::after{content:""}
+  .bar,.btn,.cta{display:none!important}
+  .card{background:#fff;border:1px solid #bbb}
+  .resultado{background:#f1f5f9}
+  .grad{color:#02215D;-webkit-text-fill-color:#02215D}
+  .eyebrow,.lab{color:#0A6E5A}
+  h1,h2,.precio__n,.resultado__n,.barra__val,.bloque p strong{color:#111}
+  .lead,.resultado__u,.barra__lab,.lista li,.chips li,.ahorro{color:#333}
+  .barra__track{background:#e5e7eb}
+  .barra__fill,.barra__fill--otro,input[type=range]{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
 </style>
 </head>
 <body>
 
-<header class="bar noprint">
-  <div class="wrap bar__in">
+<header class="bar">
+  <div class="wrap">
     <a class="brand" href="https://vonoaweb.com" target="_blank" rel="noopener">
-      <svg viewBox="0 0 210 210" width="26" height="26" aria-hidden="true">
+      <svg viewBox="0 0 210 210" width="24" height="24" aria-hidden="true">
         <defs>
           <linearGradient id="lg-brand" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0" stop-color="#2EE9B9"/>
@@ -272,457 +210,226 @@ tfoot td{background:var(--surface-2);font-family:var(--font-display);font-weight
       </svg>
       <span class="wm">VONOA<em>WEB</em></span>
     </a>
-    <span class="bar__folio" id="folioBar">COT-2609</span>
+    <span class="folio" id="tFolio">COT-2609</span>
   </div>
 </header>
 
-<main>
+<main class="wrap">
 
-<!-- ============ Portada ============ -->
-<div class="hero">
-  <div class="wrap">
-    <p class="eyebrow">Propuesta de desarrollo</p>
-    <h1>Un sistema para administrar <span class="grad">las 150 casas</span> del condominio</h1>
-    <p class="hero__lead">
-      Cuotas, cobranza, gastos, recibos firmados, reglamento e historial de cada casa.
-      Instalado en la computadora de la administración, con su base de datos ahí mismo.
-      Un solo pago: sin renta mensual y sin depender de nadie.
-    </p>
+  <!-- Portada: el precio, a la vista -->
+  <section class="hero">
+    <p class="eyebrow" id="tCliente">Propuesta para el Comité de Administración</p>
+    <h1>Un solo pago. El sistema <span class="grad">es suyo.</span></h1>
+    <p class="lead">La administración de sus 150 casas, instalada en su computadora.</p>
+    <div class="precio">
+      <span class="precio__n" id="tPrecio">$23,000</span>
+      <span class="precio__u">+ IVA · pago único · hasta <span id="tMaxMeses">12</span> meses sin intereses</span>
+    </div>
+    <a class="btn btn--ghost" href="https://vonoaweb.github.io/cuota-clara-demo/" target="_blank" rel="noopener">
+      Ver el sistema funcionando →
+    </a>
+  </section>
 
-    <dl class="hero__meta">
-      <div class="meta"><dt>Dirigida a</dt><dd id="mCliente">Comité de Administración</dd></div>
-      <div class="meta"><dt>Fecha</dt><dd id="mFecha">24 de septiembre de 2026</dd></div>
-      <div class="meta"><dt>Vigencia</dt><dd id="mVigencia">30 días naturales</dd></div>
-      <div class="meta"><dt>Folio</dt><dd id="mFolio">COT-2609</dd></div>
-    </dl>
-  </div>
-</div>
+  <!-- Cotizador -->
+  <section class="card" aria-labelledby="hCoti">
+    <h2 id="hCoti">Arme su plan de pagos</h2>
 
-<!-- ============ Lo que nos dijeron ============ -->
-<section>
-  <div class="wrap">
-    <div class="sec__head">
-      <p class="eyebrow">Punto de partida</p>
-      <h2>Lo que nos pidieron, y cómo lo resolvemos</h2>
-      <p>Esta propuesta no parte de una lista de funciones inventada: parte de lo que
-         el comité planteó en la reunión.</p>
+    <div class="pregunta">
+      <label for="rMeses">¿En cuántos meses lo pagan?</label>
+      <strong id="tPlazo">12 meses</strong>
+    </div>
+    <input type="range" id="rMeses" min="1" max="12" step="1" value="12">
+    <div class="marcas"><span>De contado</span><span id="tMarcaMax">12 meses</span></div>
+
+    <output class="resultado" for="rMeses" aria-live="polite">
+      <span class="resultado__n" id="tMensual">$1,917</span>
+      <span class="resultado__u" id="tDetalle">al mes, durante 12 meses · sin intereses</span>
+      <span class="resultado__ref" id="tRef">Hoy pagan $1,500 al mes a CondoVive, sin fecha de término.</span>
+    </output>
+
+    <div class="bloque">
+      <p class="lab">Mantenimiento</p>
+      <p id="tMant"><strong>El primer año va incluido.</strong> Después, <strong>$450 al mes</strong>.</p>
+      <ul class="chips">
+        <li>Actualizaciones</li>
+        <li>Corrección de fallas</li>
+        <li>Soporte por WhatsApp</li>
+        <li>Ajustes menores</li>
+      </ul>
     </div>
 
-    <div class="dijeron">
-      <article class="quote">
-        <p class="quote__txt">Que se pueda ver bien el historial de cada casa</p>
-        <p class="quote__res"><b>Resuelto.</b> Cada casa tiene una línea de tiempo con cargos,
-          pagos, gestiones de cobranza e incidencias, con fecha. Se puede anotar a mano
-          lo que se acordó por teléfono.</p>
-      </article>
-
-      <article class="quote">
-        <p class="quote__txt">Que si sale un jardinero a cobrar, se haga el documento y se imprima</p>
-        <p class="quote__res"><b>Resuelto.</b> Recibo con folio consecutivo: firma con el dedo en
-          el celular, foto de su identificación o del trabajo, y se imprime al momento.</p>
-      </article>
-
-      <article class="quote">
-        <p class="quote__txt">Mandar correos de difusión a las personas de las casas</p>
-        <p class="quote__res"><b>Resuelto.</b> Plantillas para avisos, convocatoria a asamblea,
-          recordatorio de cuota y corte de servicio. El sistema arma el correo y lo abre en
-          el Gmail o el Outlook de la administración, con los vecinos en copia oculta para
-          que nadie vea las direcciones de los demás.</p>
-      </article>
-
-      <article class="quote">
-        <p class="quote__txt">Que tenga el reglamento</p>
-        <p class="quote__res"><b>Resuelto.</b> Reglamento articulado, con numeración automática,
-          buscador por tema e impresión para repartir. Más el expediente con escrituras,
-          actas y pólizas.</p>
-      </article>
-
-      <article class="quote">
-        <p class="quote__txt">Que el programa y la base de datos estén en nuestra computadora</p>
-        <p class="quote__res"><b>Así se entrega.</b> Todo vive en la computadora de la
-          administración. No depende de internet para trabajar y la información no sale
-          de ahí: no está en el servidor de nadie más.</p>
-      </article>
-
-      <article class="quote">
-        <p class="quote__txt">Que ellos tengan todo</p>
-        <p class="quote__res"><b>Resuelto.</b> La base de datos es un archivo que ustedes
-          guardan, copian a una USB y se llevan. El programa es suyo. No quedan amarrados
-          a nosotros ni a nadie.</p>
-      </article>
-    </div>
-  </div>
-</section>
-
-<!-- ============ Qué incluye ============ -->
-<section>
-  <div class="wrap">
-    <div class="sec__head">
-      <p class="eyebrow">Alcance</p>
-      <h2>Diez secciones, ya construidas y funcionando</h2>
-      <p>No es una maqueta ni un render: es software que ya corre. Pueden abrirlo y usarlo
-         antes de decidir.</p>
-    </div>
-
-    <div class="mods">
-      <article class="mod"><span class="mod__n">01</span><h3>Panel</h3>
-        <p>Saldo en caja, cobranza del mes, morosidad y resultado, en una pantalla.</p></article>
-      <article class="mod"><span class="mod__n">02</span><h3>Casas</h3>
-        <p>Padrón de las 150, con buscador, filtros por calle y por estado de cuenta.</p></article>
-      <article class="mod"><span class="mod__n">03</span><h3>Historial por casa</h3>
-        <p>Todo lo que ha pasado con esa casa en una sola línea de tiempo.</p></article>
-      <article class="mod"><span class="mod__n">04</span><h3>Cobranza</h3>
-        <p>Generar cuotas del mes, registrar pagos y mandar recordatorios por WhatsApp.</p></article>
-      <article class="mod"><span class="mod__n">05</span><h3>Gastos y servicios</h3>
-        <p>Vigilancia, jardinería, luz, agua: presupuesto contra gasto real, mes a mes.</p></article>
-      <article class="mod"><span class="mod__n">06</span><h3>Recibos firmados</h3>
-        <p>Comprobante de pago en mano con folio, firma y foto. Se imprime al momento.</p></article>
-      <article class="mod"><span class="mod__n">07</span><h3>Difusión</h3>
-        <p>Correos a los vecinos con plantillas, y constancia de lo que se circuló.</p></article>
-      <article class="mod"><span class="mod__n">08</span><h3>Reportes</h3>
-        <p>Cierre mensual para asamblea y antigüedad de saldos. Listo para imprimir.</p></article>
-      <article class="mod"><span class="mod__n">09</span><h3>Reglamento y expediente</h3>
-        <p>Articulado con buscador, más escrituras, actas y pólizas con su escaneo.</p></article>
-      <article class="mod"><span class="mod__n">10</span><h3>Portal del residente</h3>
-        <p>Su saldo y el desglose de a dónde va su cuota, peso por peso. Se imprime
-           o se manda por correo desde la administración.</p></article>
-    </div>
-  </div>
-</section>
-
-<!-- ============ Demo ============ -->
-<section>
-  <div class="wrap">
-    <div class="demo">
-      <div>
-        <p class="eyebrow">Pruébenlo antes de decidir</p>
-        <h3>El sistema ya está en línea</h3>
-        <p>Ábranlo desde el celular, muévanle, registren un pago, firmen un recibo.
-           Trae un condominio de ejemplo de 150 casas para que se vea trabajando.</p>
+    <div class="bloque">
+      <div class="comp__head">
+        <p class="lab">Contra lo que pagan hoy</p>
+        <div class="seg" role="group" aria-label="Plazo a comparar">
+          <button type="button" data-anios="1">1 año</button>
+          <button type="button" data-anios="3" class="is-on">3 años</button>
+          <button type="button" data-anios="5">5 años</button>
+        </div>
       </div>
-      <a class="btn noprint" href="https://vonoaweb.github.io/cuota-clara-demo/" target="_blank" rel="noopener">
-        Abrir el sistema →
-      </a>
-    </div>
-  </div>
-</section>
 
-<!-- ============ Inversión ============ -->
-<section>
-  <div class="wrap">
-    <div class="sec__head">
-      <p class="eyebrow">Inversión</p>
-      <h2>Un pago, y el sistema es del condominio</h2>
-      <p>Sin renta mensual, sin depender de nadie. El programa y la base de datos
-         se instalan en la computadora de la administración.</p>
-    </div>
-
-    <div class="planes">
-      <!-- Principal -->
-      <article class="plan plan--reco">
-        <span class="plan__flag">Lo que pidieron</span>
-        <div>
-          <p class="plan__op">Sistema completo</p>
-          <h3>Instalado en su computadora</h3>
-          <p class="plan__para">Las diez secciones, con sus 150 casas y su reglamento ya
-             cargados. Se paga una vez y queda suyo para siempre.</p>
-        </div>
-        <div class="precio">
-          <p class="precio__n" data-precio="local">$23,000</p>
-          <p class="precio__u">MXN, pago único · más IVA · sin mensualidad</p>
-        </div>
-        <ul class="lista">
-          <li>Las 10 secciones completas y funcionando</li>
-          <li>El programa y la base de datos en su computadora</li>
-          <li>Captura de las 150 casas con propietarios y contacto</li>
-          <li>Su reglamento cargado y articulado</li>
-          <li>Los saldos con los que arrancan</li>
-          <li>La base de datos es un archivo: se guarda y se copia a una USB</li>
-          <li>Funciona sin internet</li>
-          <li>Capacitación de 2 horas al comité</li>
-          <li>30 días de garantía por fallas</li>
-        </ul>
-      </article>
-
-      <!-- Complemento -->
-      <article class="plan">
-        <div>
-          <p class="plan__op">Complemento opcional</p>
-          <h3>Respaldo automático en la nube</h3>
-          <p class="plan__para">Una copia diaria fuera de la computadora. Se puede contratar
-             desde el principio o más adelante; no es requisito para operar.</p>
-        </div>
-        <div class="precio">
-          <p class="precio__n" data-precio="nube">$4,800</p>
-          <p class="precio__u">MXN al año · más IVA · equivale a <span data-precio="nube-mes">$400</span> al mes</p>
-        </div>
-        <ul class="lista">
-          <li>Copia diaria automática, sin que nadie se acuerde de hacerla</li>
-          <li>Se conservan las copias de los últimos 30 días</li>
-          <li>Recuperación si la computadora falla o se la roban</li>
-          <li>Nosotros restauramos: ustedes no hacen nada técnico</li>
-        </ul>
-      </article>
-    </div>
-
-    <div class="nota nota--warn" style="margin-top:20px">
-      <strong>Por qué existe el complemento.</strong> Tener todo en una sola computadora tiene
-      una consecuencia que conviene decir de frente: si ese equipo se descompone, se lo roban o
-      alguien lo formatea, se pierde la información del condominio. El sistema baja la base de
-      datos como archivo para que la guarden ustedes en una USB, y con eso basta si son
-      disciplinados. El respaldo en la nube es para no depender de que alguien se acuerde.
-    </div>
-  </div>
-</section>
-
-<!-- ============ Comparativo ============ -->
-<section>
-  <div class="wrap">
-    <div class="sec__head">
-      <p class="eyebrow">Contra lo que pagan hoy</p>
-      <h2>Dejar de pagar renta cada mes</h2>
-      <p>Hoy el condominio paga <strong data-precio="comp-mes">$1,500</strong> al mes por
-         CondoVive. Es un buen producto; la pregunta es si conviene seguir rentándolo.</p>
-    </div>
-
-    <div class="tablabox">
-      <div class="scroller">
-        <table>
-          <thead>
-            <tr><th>Concepto</th><th>CondoVive, como hoy</th><th>Sistema propio</th></tr>
-          </thead>
-          <tbody>
-            <tr><td>Qué se paga</td>
-                <td class="n">Renta mensual, para siempre</td>
-                <td class="n si">Una sola vez</td></tr>
-            <tr><td>Costo del primer año</td>
-                <td class="n" data-precio="comp-anio">$18,000</td>
-                <td class="n" data-precio="anio1">$23,000</td></tr>
-            <tr><td>Costo del segundo año en adelante</td>
-                <td class="n"><span data-precio="comp-anio2">$18,000</span> cada año</td>
-                <td class="n si">$0</td></tr>
-            <tr><td>Dónde viven los datos</td>
-                <td class="no2">En sus servidores, en Estados Unidos</td>
-                <td class="si">En la computadora del condominio</td></tr>
-            <tr><td>Funciona sin internet</td>
-                <td class="no2">No</td>
-                <td class="si">Sí</td></tr>
-            <tr><td>Recibo de pago en mano con firma y foto</td>
-                <td class="no2">No lo tiene</td>
-                <td class="si">Incluido</td></tr>
-            <tr><td>Ajustado a cómo trabaja este condominio</td>
-                <td class="no2">Se adaptan ustedes al programa</td>
-                <td class="si">El programa se adapta a ustedes</td></tr>
-            <tr><td>Respaldo automático</td>
-                <td class="si">Incluido</td>
-                <td class="n">Complemento de <span data-precio="nube-tabla">$4,800</span>/año</td></tr>
-            <tr><td>Facturación CFDI ante el SAT</td>
-                <td class="si">Incluida</td>
-                <td class="no2">No incluida (se cotiza aparte)</td></tr>
-            <tr><td>Portal donde cada vecino entra con su cuenta</td>
-                <td class="si">Sí, con app móvil</td>
-                <td class="no2">El portal se consulta desde la administración</td></tr>
-            <tr><td>Si dejan de pagar</td>
-                <td class="no2">Pierden el acceso y los datos</td>
-                <td class="si">Todo sigue siendo suyo</td></tr>
-          </tbody>
-          <tfoot>
-            <tr><td>Costo a 3 años</td>
-                <td class="n" data-precio="comp-3">$54,000</td>
-                <td class="n si" data-precio="total3">$23,000</td></tr>
-            <tr><td>Costo a 5 años</td>
-                <td class="n" data-precio="comp-5">$90,000</td>
-                <td class="n si" data-precio="total5">$23,000</td></tr>
-          </tfoot>
-        </table>
+      <div class="barra">
+        <span class="barra__lab">CondoVive, como hoy</span>
+        <span class="barra__val" id="vOtro">$54,000</span>
+        <span class="barra__track"><i class="barra__fill barra__fill--otro" id="bOtro"></i></span>
       </div>
-    </div>
-
-    <p class="fuente">
-      Costo de CondoVive calculado con lo que el condominio paga actualmente,
-      <span data-precio="comp-mes-2">$1,500</span> al mes. Para referencia, su precio de lista
-      publicado para 150 unidades es de $2,025 al mes más IVA
-      (<a href="https://condovive.com/pricing" target="_blank" rel="noopener">condovive.com/pricing</a>,
-      consultado el 24 de septiembre de 2026), así que su tarifa actual podría subir al renovar.
-    </p>
-
-    <div class="nota nota--warn" style="margin-top:18px">
-      <strong>En corto:</strong> el primer año el sistema propio cuesta un poco más que la renta.
-      A partir del mes <strong data-precio="meses-rec">16</strong> ya se pagó solo, y de ahí en
-      adelante el condominio deja de pagar
-      <strong data-precio="comp-anio3">$18,000</strong> al año. A tres años son
-      <strong data-precio="ahorro3">$31,000</strong> que se quedan en la caja del condominio;
-      a cinco, <strong data-precio="ahorro5">$67,000</strong>.
-      <br><br>
-      Para ser justos: CondoVive tiene cosas que esta propuesta no incluye — facturación ante
-      el SAT, app en las tiendas y portal con cuenta para cada vecino. Si las usan hoy y las
-      necesitan, conviene decirlo antes de decidir.
-    </div>
-  </div>
-</section>
-
-<!-- ============ Tiempos ============ -->
-<section>
-  <div class="wrap">
-    <div class="sec__head">
-      <p class="eyebrow">Tiempos</p>
-      <h2>De la firma a estar operando</h2>
-    </div>
-
-    <ol class="fases">
-      <li class="fase"><span class="fase__sem">Semana 1</span>
-        <div><h4>Captura</h4>
-        <p>Cargamos las 150 casas con propietarios, metros y contacto; el reglamento; los
-           saldos con los que arrancan y el presupuesto del año.</p></div></li>
-      <li class="fase"><span class="fase__sem">Semana 2</span>
-        <div><h4>Instalación y ajustes</h4>
-        <p>Instalamos el sistema en la computadora de la administración, dejamos la base de
-           datos corriendo y afinamos lo que no cuadre con su forma de trabajar.</p></div></li>
-      <li class="fase"><span class="fase__sem">Semana 3</span>
-        <div><h4>Capacitación y entrega</h4>
-        <p>Dos horas con el comité: cómo cobrar, cómo hacer un recibo firmado, cómo sacar el
-           reporte de asamblea y —lo más importante— cómo guardar la base de datos.
-           <strong>Aquí ya están operando.</strong></p></div></li>
-      <li class="fase"><span class="fase__sem">Mes 1</span>
-        <div><h4>Acompañamiento del primer corte</h4>
-        <p>Los acompañamos en la primera cobranza completa y en el primer cierre mensual,
-           para corregir lo que aparezca con el uso real.</p></div></li>
-    </ol>
-  </div>
-</section>
-
-<!-- ============ Qué necesitamos / condiciones ============ -->
-<section>
-  <div class="wrap">
-    <div class="dosc">
-      <article class="card">
-        <h3>Qué necesitamos de ustedes</h3>
-        <ul>
-          <li>El padrón de las 150 casas con propietario, teléfono y correo, en Excel o como lo tengan</li>
-          <li>Los metros de construcción de cada prototipo, para calcular el indiviso</li>
-          <li>Los saldos con los que arrancan</li>
-          <li>El reglamento vigente y el acta que lo aprobó</li>
-          <li>Los datos de la cuenta bancaria donde reciben las cuotas</li>
-          <li>Una persona del comité como contacto para dudas</li>
-        </ul>
-      </article>
-
-      <article class="card">
-        <h3>Condiciones</h3>
-        <ul>
-          <li>50% de anticipo para comenzar, 50% contra entrega</li>
-          <li>Incluye dos rondas de ajustes sobre lo entregado</li>
-          <li>30 días de garantía por fallas, sin costo</li>
-          <li>El programa y la información son del condominio</li>
-          <li>El respaldo en la nube es opcional, se cobra por año adelantado y se puede cancelar en cualquier renovación</li>
-          <li>Precios en pesos mexicanos, más IVA</li>
-          <li>No incluye facturación CFDI, control de acceso de caseta ni app en las tiendas; se cotizan aparte</li>
-          <li>El sistema funciona en cualquier computadora con navegador actualizado, Windows o Mac</li>
-        </ul>
-      </article>
-    </div>
-
-    <div class="nota" style="margin-top:18px">
-      <strong>Una aclaración honesta sobre el reglamento.</strong> El sistema trae un reglamento
-      de referencia, redactado como se usa en Jalisco. Antes de aplicarlo debe revisarlo un
-      abogado y aprobarse en asamblea. Nosotros hacemos el software, no damos asesoría legal.
-    </div>
-  </div>
-</section>
-
-<!-- ============ Cierre ============ -->
-<section>
-  <div class="wrap">
-    <div class="cierre">
-      <p class="eyebrow">Siguiente paso</p>
-      <h2>Ábranlo, úsenlo, y luego decidimos</h2>
-      <p>El sistema está en línea y funcionando. Pruébenlo con calma y nos dicen qué
-         le falta para ser exactamente lo que necesitan.</p>
-      <div class="acciones noprint">
-        <a class="btn" href="https://wa.me/5215644645574?text=Hola%2C%20vimos%20la%20propuesta%20del%20sistema%20de%20administraci%C3%B3n%20del%20condominio%20y%20queremos%20platicar." target="_blank" rel="noopener">Hablar por WhatsApp</a>
-        <a class="btn btn--ghost" href="mailto:hola@vonoaweb.com?subject=Propuesta%20sistema%20de%20administraci%C3%B3n%20de%20condominio">Escribir un correo</a>
-        <button class="btn btn--ghost" type="button" id="btnPdf">Guardar como PDF</button>
+      <div class="barra">
+        <span class="barra__lab">Su sistema, con mantenimiento</span>
+        <span class="barra__val" id="vPropio">$33,800</span>
+        <span class="barra__track"><i class="barra__fill" id="bPropio"></i></span>
       </div>
+
+      <p class="ahorro" id="tAhorro" aria-live="polite"></p>
     </div>
+  </section>
+
+  <!-- Incluye -->
+  <section class="card" aria-labelledby="hIncluye">
+    <h2 id="hIncluye">Incluye</h2>
+    <ul class="lista">
+      <li>Todo lo que vieron en el sistema, con sus 150 casas y su reglamento ya capturados</li>
+      <li>Instalación en la computadora de la administración</li>
+      <li>Capacitación al comité</li>
+      <li>Listo en 3 semanas, con 30 días de garantía</li>
+    </ul>
+  </section>
+
+  <div class="cta">
+    <a class="btn" id="aWhats" target="_blank" rel="noopener"
+       href="https://wa.me/5215644645574">Lo queremos · WhatsApp</a>
+    <button class="btn btn--ghost" type="button" id="bPdf">Guardar PDF</button>
   </div>
-</section>
+
+  <p class="letra" id="tLetra">
+    Precios en pesos, más IVA. El primer pago se hace al firmar. Propuesta del
+    25 de septiembre de 2026, vigente 30 días. No incluye facturación ante el SAT
+    ni app en tiendas.
+  </p>
+
+  <footer class="pie">
+    <strong style="color:var(--vw-ink)">Vonoa Web</strong> · Guadalajara, Jalisco<br>
+    <a href="mailto:hola@vonoaweb.com">hola@vonoaweb.com</a> ·
+    <a href="https://wa.me/5215644645574" target="_blank" rel="noopener">WhatsApp</a> ·
+    <a href="https://vonoaweb.com" target="_blank" rel="noopener">vonoaweb.com</a>
+  </footer>
 
 </main>
 
-<footer class="pie">
-  <div class="wrap pie__row">
-    <div>
-      <strong style="color:var(--vw-ink)">Vonoa Web</strong> · Guadalajara, Jalisco<br>
-      <a href="mailto:hola@vonoaweb.com">hola@vonoaweb.com</a> ·
-      <a href="https://wa.me/5215644645574" target="_blank" rel="noopener">WhatsApp</a> ·
-      <a href="https://vonoaweb.com" target="_blank" rel="noopener">vonoaweb.com</a>
-    </div>
-    <div style="text-align:right">
-      Propuesta <span id="folioPie">COT-2609</span><br>
-      Vigencia de 30 días naturales
-    </div>
-  </div>
-</footer>
-
 <script>
-/* Los importes viven en un solo lugar: cambiar aquí los actualiza en toda la
-   propuesta, incluido el comparativo y el total a tres años. */
+/* Todo lo que se negocia vive aquí. Cambiar un número actualiza la página entera. */
 var PROPUESTA = {
   cliente: 'Comité de Administración',
   folio: 'COT-2609',
-  local: 23000,                // pago único: programa y base de datos en su computadora
-  nube: 4800,                  // complemento opcional, por año
-  competidorMensual: 1500      // lo que el condominio paga HOY a CondoVive (dato del cliente)
+  fecha: '25 de septiembre de 2026',
+  precio: 23000,                     // pago único del sistema
+  mesesMaximos: 12,                  // se puede pagar hasta en 12 meses, sin intereses
+  mantenimientoMensual: 450,         // se cobra al terminar los meses incluidos
+  mesesMantenimientoIncluidos: 12,   // el primer año de mantenimiento va incluido
+  competidorMensual: 1500,           // lo que pagan hoy a CondoVive (dato del cliente)
+  whatsapp: '5215644645574'
 };
 
 (function () {
-  var mx = new Intl.NumberFormat('es-MX', {
+  var P = PROPUESTA;
+  var fmt = new Intl.NumberFormat('es-MX', {
     style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 0
   });
+  function $(id) { return document.getElementById(id); }
+  function dinero(n) { return fmt.format(Math.round(n)); }
 
-  function pon(clave, valor) {
-    document.querySelectorAll('[data-precio="' + clave + '"]').forEach(function (n) {
-      n.textContent = valor;
-    });
+  var meses = P.mesesMaximos;
+  var anios = 3;
+
+  /* Costo acumulado de cada camino a los m meses */
+  function costoPropio(m) {
+    return P.precio + P.mantenimientoMensual * Math.max(0, m - P.mesesMantenimientoIncluidos);
+  }
+  function costoOtro(m) { return P.competidorMensual * m; }
+  function mesCruce() {
+    for (var m = 1; m <= 240; m++) if (costoOtro(m) > costoPropio(m)) return m;
+    return null;
   }
 
-  var mes = PROPUESTA.competidorMensual;
-  var anio = mes * 12;
+  function plazoTexto(n) { return n === 1 ? 'De contado' : n + ' meses'; }
 
-  pon('local', mx.format(PROPUESTA.local));
-  pon('anio1', mx.format(PROPUESTA.local));
-  pon('total3', mx.format(PROPUESTA.local));
-  pon('total5', mx.format(PROPUESTA.local));
+  function pintar() {
+    var r = $('rMeses');
+    r.style.setProperty('--p', ((meses - 1) / (P.mesesMaximos - 1) * 100) + '%');
+    r.setAttribute('aria-valuetext', plazoTexto(meses));
+    $('tPlazo').textContent = plazoTexto(meses);
 
-  pon('comp-mes', mx.format(mes));
-  pon('comp-mes-2', mx.format(mes));
-  pon('comp-anio', mx.format(anio));
-  pon('comp-anio2', mx.format(anio));
-  pon('comp-anio3', mx.format(anio));
-  pon('comp-3', mx.format(anio * 3));
-  pon('comp-5', mx.format(anio * 5));
+    if (meses === 1) {
+      $('tMensual').textContent = dinero(P.precio);
+      $('tDetalle').textContent = 'en un solo pago';
+    } else {
+      $('tMensual').textContent = dinero(P.precio / meses);
+      $('tDetalle').textContent = 'al mes, durante ' + meses + ' meses · sin intereses';
+    }
 
-  // Primer mes en que la renta acumulada ya rebasa el pago único
-  // (23,000 / 1,500 = 15.3 → en el mes 16 la renta suma 24,000)
-  pon('meses-rec', String(Math.ceil(PROPUESTA.local / mes)));
-  pon('ahorro3', mx.format(anio * 3 - PROPUESTA.local));
-  pon('ahorro5', mx.format(anio * 5 - PROPUESTA.local));
+    /* Comparativo al plazo elegido */
+    var m = anios * 12;
+    var otro = costoOtro(m), propio = costoPropio(m);
+    var tope = Math.max(otro, propio) || 1;
+    $('vOtro').textContent = dinero(otro);
+    $('vPropio').textContent = dinero(propio);
+    $('bOtro').style.width = (otro / tope * 100).toFixed(1) + '%';
+    $('bPropio').style.width = (propio / tope * 100).toFixed(1) + '%';
 
-  pon('nube', mx.format(PROPUESTA.nube));
-  pon('nube-mes', mx.format(Math.round(PROPUESTA.nube / 12)));
-  pon('nube-tabla', mx.format(PROPUESTA.nube));
+    var dif = otro - propio;
+    var cruce = mesCruce();
+    var desde = cruce ? ' Desde el mes ' + cruce + ' ya les sale más barato.' : '';
+    var plazo = anios === 1 ? 'El primer año' : 'A ' + anios + ' años';
+    $('tAhorro').innerHTML = dif > 0
+      ? 'Se ahorran <strong>' + dinero(dif) + '</strong>.' + desde
+      : plazo + ' su sistema cuesta <strong>' + dinero(-dif) + '</strong> más.' + desde;
 
-  var cli = document.getElementById('mCliente');
-  if (cli) cli.textContent = PROPUESTA.cliente;
-  ['mFolio', 'folioBar', 'folioPie'].forEach(function (id) {
-    var n = document.getElementById(id);
-    if (n) n.textContent = PROPUESTA.folio;
+    /* El WhatsApp ya lleva el plan que eligieron */
+    var msg = 'Hola, vimos la propuesta del sistema de administración del condominio (' +
+      P.folio + '). Nos interesa pagarlo ' +
+      (meses === 1 ? 'de contado' : 'en ' + meses + ' meses') + '.';
+    $('aWhats').href = 'https://wa.me/' + P.whatsapp + '?text=' + encodeURIComponent(msg);
+  }
+
+  /* Textos fijos que salen de PROPUESTA */
+  $('tCliente').textContent = 'Propuesta para el ' + P.cliente;
+  $('tFolio').textContent = P.folio;
+  $('tPrecio').textContent = dinero(P.precio);
+  $('tMaxMeses').textContent = P.mesesMaximos;
+  $('tMarcaMax').textContent = P.mesesMaximos + ' meses';
+  $('rMeses').max = P.mesesMaximos;
+  $('rMeses').value = meses;
+  $('tRef').textContent = 'Hoy pagan ' + dinero(P.competidorMensual) +
+    ' al mes a CondoVive, sin fecha de término.';
+
+  var incl = P.mesesMantenimientoIncluidos;
+  $('tMant').innerHTML = incl === 0
+    ? '<strong>' + dinero(P.mantenimientoMensual) + ' al mes</strong> desde la entrega.'
+    : '<strong>' + (incl === 12 ? 'El primer año va incluido.' : 'Los primeros ' + incl + ' meses van incluidos.') +
+      '</strong> Después, <strong>' + dinero(P.mantenimientoMensual) + ' al mes</strong>.';
+
+  $('tLetra').textContent = 'Precios en pesos, más IVA. El primer pago se hace al firmar. ' +
+    'Propuesta del ' + P.fecha + ', vigente 30 días. No incluye facturación ante el SAT ni app en tiendas.';
+
+  $('rMeses').addEventListener('input', function (e) {
+    meses = Number(e.target.value);
+    pintar();
   });
 
-  var pdf = document.getElementById('btnPdf');
-  if (pdf) pdf.onclick = function () { window.print(); };
+  document.querySelectorAll('[data-anios]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      anios = Number(b.getAttribute('data-anios'));
+      document.querySelectorAll('[data-anios]').forEach(function (x) {
+        x.classList.toggle('is-on', x === b);
+        x.setAttribute('aria-pressed', x === b ? 'true' : 'false');
+      });
+      pintar();
+    });
+  });
+
+  $('bPdf').addEventListener('click', function () { window.print(); });
+
+  pintar();
 })();
 </script>
-
 </body>
 </html>
