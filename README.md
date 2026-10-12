@@ -33,6 +33,8 @@ condominio-app/
 ├── js/
 │   ├── format.js         Moneda, fechas y periodos en es-MX
 │   ├── archivos.js       Firmas y fotos en IndexedDB, y el lienzo de firma
+│   ├── pdf.js            PDF sin librerías: texto, líneas, rectángulos y JPEG
+│   ├── comprobantes.js   Recibos, vales de caja chica y convenios en PDF
 │   ├── store.js          Persistencia y estado (único punto que toca el guardado)
 │   ├── seed.js           Datos de ejemplo y estructura vacía
 │   ├── model.js          Reglas del condominio: indiviso, cuotas, saldos, caja
@@ -49,8 +51,10 @@ condominio-app/
 |---|---|
 | Panel | Cómo va el mes en un vistazo |
 | Unidades | Padrón, estado de cuenta e historial de cada casa |
-| Cobranza | Generar cuotas, registrar pagos, recordatorios |
+| Cobranza | Generar cuotas, registrar pagos y bajar el recibo de cada uno |
+| Adeudos | Quién dejó de pagar y desde cuándo, avisos por WhatsApp y correo, convenios en parcialidades |
 | Gastos | Servicios del condominio contra su presupuesto |
+| Caja chica | Efectivo: egresos (el pago a los de la basura) e ingresos, con recibo que se descarga solo |
 | Recibos | Comprobantes de pago en mano, con firma y foto |
 | Difusión | Correos a los residentes, con plantillas |
 | Reportes | Cierre mensual imprimible para asamblea |
@@ -120,6 +124,34 @@ toma la foto y se imprime o se guarda con folio consecutivo.
 
 Si el navegador bloquea IndexedDB, `CC.Archivos.disponible()` devuelve `false`
 y la aplicación esconde la parte de la foto en vez de fallar.
+
+## Avisos de adeudo, convenios y caja chica
+
+- **A quién le toca aviso** (`Model.porAvisar`): debe algo vencido desde hace más
+  de `avisoDiasTras` días, no está al día en un convenio y no se le avisó en los
+  últimos `avisoRepetirDias`. Las dos cifras se cambian en Ajustes.
+- **El aviso** se escribe con el saldo real (`Model.avisoAdeudo`) y sale por
+  `wa.me` o `mailto:` desde el teléfono o el correo de la administración. El
+  último clic lo da una persona: mandarlo solo exige la API de WhatsApp Business
+  y un servidor de correo. Cada envío se guarda en `avisosAdeudo` y aparece en el
+  historial de la casa.
+- **Convenios** (`convenios`): el adeudo partido en parcialidades mensuales o
+  quincenales. Un pago marcado con `convenioId` es abono al convenio;
+  `Model.estadoConvenio` cuenta cuántas parcialidades cubre y cuáles van
+  atrasadas. El PDF para firmar sale de `Comprobantes.convenio`.
+- **Recibo de cada pago**: los pagos llevan `folio` (P-0001…). `Model.datosRecibo`
+  dice a qué cargos se aplicó (lo más viejo primero) y cómo quedó la casa.
+- **Caja chica** (`cajaChica`): fondo fijo (`fondoCajaChica`). Egresos e ingresos
+  llevan folio C-0001… y firma opcional; al guardar se descarga el recibo. La
+  reposición también crea un gasto "Caja chica", para que la cuenta del
+  condominio cuadre.
+
+## PDF sin librerías
+
+`js/pdf.js` escribe el PDF a mano: Helvetica (viene en todo lector, no se
+incrusta), WinAnsi para los acentos, y las firmas y fotos como JPEG
+(`/DCTDecode`). Así los recibos se descargan aunque la computadora no tenga
+internet. `pypdf` en modo estricto los abre sin errores.
 
 ## Difusión por correo
 

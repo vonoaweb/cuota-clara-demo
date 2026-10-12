@@ -15,6 +15,8 @@ CC.vistas.panel = {
     ];
   },
 
+  avisar: function (ctx) { CC.vistas.adeudos.avisarTodos(ctx); },
+
   render: function (ctx) {
     var p = ctx.periodo;
     var r = CC.Model.resumen(p);
@@ -27,9 +29,20 @@ CC.vistas.panel = {
     if (CC.Store.esDemo()) {
       out.push(
         '<div class="note note--demo">' +
-        '<div><strong>Estos son datos de ejemplo.</strong> Un condominio ficticio de 18 unidades, ' +
+        '<div><strong>Estos son datos de ejemplo.</strong> Un condominio ficticio de ' +
+        CC.Store.unidades().length + ' casas, ' +
         'para que veas la aplicación trabajando. En cuanto captures tu primer dato real desaparece este aviso, ' +
         'o puedes vaciarlo todo desde <a href="#/ajustes">Ajustes</a>.</div>' +
+        '</div>');
+    }
+
+    /* --- Lo que toca hacer hoy --- */
+    var porAvisar = CC.Model.porAvisar(p);
+    if (porAvisar.length) {
+      out.push('<div class="cta">' +
+        '<div class="cta__txt"><strong>Toca avisar a ' + porAvisar.length + (porAvisar.length === 1 ? ' casa' : ' casas') +
+        ' que no han pagado.</strong> Los mensajes ya están escritos con el saldo de cada una.</div>' +
+        '<button class="btn" data-accion="avisar">' + CC.ui.icono('wa', 'i--sm') + ' Enviar avisos</button>' +
         '</div>');
     }
 

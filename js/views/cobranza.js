@@ -118,17 +118,22 @@ CC.vistas.cobranza = {
       '<span class="eyebrow">' + recibidos.length + ' movimientos</span></div>' +
       (recibidos.length
         ? '<div class="tablewrap"><table class="ledger">' +
-          '<thead><tr><th>Fecha</th><th>Casa</th><th>Método</th><th>Referencia</th>' +
+          '<thead><tr><th>Folio</th><th>Fecha</th><th>Casa</th><th>Método</th><th>Referencia</th>' +
           '<th class="r">Monto</th><th class="noprint"></th></tr></thead><tbody>' +
           recibidos.map(function (x) {
             var u = CC.Store.unidad(x.unidadId);
             return '<tr>' +
+              '<td class="mono" style="font-size:12px">' + esc(CC.Comprobantes.folio('P-', x.folio)) + '</td>' +
               '<td class="mono" style="font-size:12px">' + esc(CC.fmt.fechaCorta(x.fecha)) + '</td>' +
-              '<td class="strong">' + esc(u ? u.clave : '—') + '</td>' +
+              '<td class="strong">' + esc(u ? u.clave : '—') +
+              (x.convenioId ? ' <span class="pill pill--flat pill--mute">convenio</span>' : '') + '</td>' +
               '<td>' + esc(x.metodo || '—') + '</td>' +
               '<td class="mono" style="font-size:12px;color:var(--muted)">' + esc(x.referencia || '—') + '</td>' +
               '<td class="r strong">' + esc(CC.fmt.money2(x.monto)) + '</td>' +
-              '<td class="r noprint"><button class="iconbtn" data-delpago="' + esc(x.id) + '" title="Eliminar pago">' +
+              '<td class="r noprint" style="white-space:nowrap">' +
+              '<button class="btn btn--sm btn--soft" data-recpago="' + esc(x.id) + '" title="Descargar recibo en PDF">' +
+              CC.ui.icono('imprimir', 'i--sm') + ' Recibo</button> ' +
+              '<button class="iconbtn" data-delpago="' + esc(x.id) + '" title="Eliminar pago">' +
               CC.ui.icono('cerrar', 'i--sm') + '</button></td>' +
               '</tr>';
           }).join('') + '</tbody></table></div>'
@@ -145,9 +150,10 @@ CC.vistas.cobranza = {
       b.onclick = function () { self.formularioPago(b.getAttribute('data-pago'), ctx.periodo); };
     });
     raiz.querySelectorAll('[data-rec]').forEach(function (b) {
-      b.onclick = function () {
-        CC.vistas.unidad.recordatorio({ param: b.getAttribute('data-rec'), periodo: ctx.periodo });
-      };
+      b.onclick = function () { CC.vistas.adeudos.avisarUna(b.getAttribute('data-rec'), ctx.periodo); };
+    });
+    raiz.querySelectorAll('[data-recpago]').forEach(function (b) {
+      b.onclick = function () { CC.Comprobantes.descargar(CC.Comprobantes.reciboPago(b.getAttribute('data-recpago'))); };
     });
     raiz.querySelectorAll('[data-delpago]').forEach(function (b) {
       b.onclick = function () {
@@ -176,6 +182,38 @@ CC.vistas.cobranza = {
   },
 
   pago: function (ctx) { this.formularioPago(null, ctx.periodo); },
+
+  /** Después de registrar un pago: su recibo, para bajarlo o mandarlo al vecino. */
+  pagoListo: function (pagoId) {
+    var esc = CC.ui.esc;
+    var d = CC.Model.datosRecibo(pagoId);
+    if (!d) { CC.ui.cerrarModal(); return; }
+    var u = d.unidad || {};
+    var sd = d.saldoDespues;
+    CC.ui.modal('Pago registrado',
+      '<div class="listo">' +
+      '<span class="listo__monto num">' + esc(CC.fmt.money2(d.pago.monto)) + '</span>' +
+      '<span>Casa ' + esc(u.clave) + ' · folio ' + esc(CC.Comprobantes.folio('P-', d.pago.folio)) + '</span>' +
+      '<span class="muted">' + (sd > 0.005 ? 'Le quedan ' + esc(CC.fmt.money2(sd)) + ' por pagar'
+        : sd < -0.005 ? 'Queda ' + esc(CC.fmt.money2(-sd)) + ' a favor' : 'Queda al corriente') +
+      (d.convenio ? ' · convenio ' + d.convenio.pagadas + ' de ' + d.convenio.plan.length : '') + '</span>' +
+      '</div>' +
+      '<div class="formactions" style="justify-content:center">' +
+      '<button type="button" class="btn btn--ghost" id="lPdf">' + CC.ui.icono('imprimir', 'i--sm') + ' Descargar recibo</button>' +
+      (u.telefono ? '<button type="button" class="btn btn--ghost" id="lWa">' + CC.ui.icono('wa', 'i--sm') + ' Mandar por WhatsApp</button>' : '') +
+      '<button type="button" class="btn" id="lOk">Listo</button>' +
+      '</div>',
+      function (cuerpo) {
+        cuerpo.querySelector('#lOk').onclick = CC.ui.cerrarModal;
+        cuerpo.querySelector('#lPdf').onclick = function () {
+          CC.Comprobantes.descargar(CC.Comprobantes.reciboPago(pagoId));
+        };
+        var wa = cuerpo.querySelector('#lWa');
+        if (wa) wa.onclick = function () {
+          CC.Comprobantes.compartir(CC.Comprobantes.reciboPago(pagoId), CC.Comprobantes.textoReciboPago(pagoId), u.telefono);
+        };
+      });
+  },
 
   formularioPago: function (unidadId, periodo) {
     var esc = CC.ui.esc;
@@ -221,6 +259,9 @@ CC.vistas.cobranza = {
       '<input class="input mono" id="pRef" placeholder="Folio o últimos dígitos"></label>' +
       '</div>' +
 
+      '<label class="check" id="pCvWrap" hidden><input type="checkbox" id="pCv" checked> ' +
+      '<span id="pCvTxt"></span></label>' +
+
       '<label class="field" style="margin-top:14px"><span class="field__lab">Nota (opcional)</span>' +
       '<input class="input" id="pNota" placeholder="Pago parcial acordado con el comité, etc."></label>' +
 
@@ -234,31 +275,47 @@ CC.vistas.cobranza = {
         var inMonto = cuerpo.querySelector('#pMonto');
         var hint = cuerpo.querySelector('#pHint');
 
+        var cvWrap = cuerpo.querySelector('#pCvWrap'), cvTxt = cuerpo.querySelector('#pCvTxt');
+        var cvCheck = cuerpo.querySelector('#pCv');
+        var cvActual = null;
+
         function pista() {
           var s = CC.Model.situacion(selU.value, periodo);
           hint.textContent = s.saldo > 0.005
             ? 'Saldo actual de la casa: ' + CC.fmt.money2(s.saldo)
             : 'Esta casa está al corriente';
+          // Si la casa tiene convenio, el pago se propone como su siguiente parcialidad
+          cvActual = CC.Model.convenioDe(selU.value);
+          cvWrap.hidden = !cvActual;
+          if (cvActual && cvActual.siguiente) {
+            cvTxt.textContent = 'Es abono al convenio: parcialidad ' + cvActual.siguiente.n + ' de ' +
+              cvActual.plan.length + ' (' + CC.fmt.money2(cvActual.siguiente.monto) + ')';
+          }
         }
         pista();
+        if (cvActual && cvActual.siguiente) inMonto.value = cvActual.siguiente.monto.toFixed(2);
 
-        selU.onchange = function () { inMonto.value = sugerido(selU.value); pista(); };
+        selU.onchange = function () {
+          inMonto.value = sugerido(selU.value);
+          pista();
+          if (cvActual && cvActual.siguiente) inMonto.value = cvActual.siguiente.monto.toFixed(2);
+        };
         cuerpo.querySelector('#pCancel').onclick = CC.ui.cerrarModal;
 
         cuerpo.querySelector('#pOk').onclick = function () {
           var monto = Number(inMonto.value);
           if (!(monto > 0)) { CC.ui.toast('Captura un monto mayor a cero', 'crit'); return; }
-          CC.Store.agregarPago({
+          var pago = CC.Store.agregarPago({
             unidadId: selU.value,
             monto: monto,
             fecha: cuerpo.querySelector('#pFecha').value || CC.per.hoyISO(),
             periodo: cuerpo.querySelector('#pPeriodo').value,
             metodo: cuerpo.querySelector('#pMetodo').value,
             referencia: cuerpo.querySelector('#pRef').value.trim(),
+            convenioId: cvActual && cvCheck.checked ? cvActual.convenio.id : null,
             nota: cuerpo.querySelector('#pNota').value.trim()
           });
-          CC.ui.cerrarModal();
-          CC.ui.toast('Pago de ' + CC.fmt.money2(monto) + ' registrado', 'good');
+          CC.vistas.cobranza.pagoListo(pago.id);
         };
       });
   }

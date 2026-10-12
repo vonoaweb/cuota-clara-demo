@@ -215,14 +215,28 @@ CC.vistas.unidades = {
         (s.aFavor > 0.005 ? '<span style="color:var(--good)">' + esc(CC.fmt.money2(s.aFavor)) + ' a favor</span>'
           : esc(CC.fmt.money2(Math.max(0, s.saldo)))) + '</td>' +
         '<td class="c">' + CC.ui.pill(s.estado) +
-        (s.mesesVencidos > 1 ? '<div class="muted" style="font-size:10.5px;margin-top:2px">' + s.mesesVencidos + ' meses</div>' : '') +
+        (s.desde ? '<div class="muted" style="font-size:10.5px;margin-top:2px">desde ' + esc(CC.fmt.periodoCorto(s.desde)) + '</div>' : '') +
         '</td>' +
         '<td class="r noprint" style="white-space:nowrap">' +
         '<a class="btn btn--sm btn--soft" href="#/unidad/' + esc(u.id) + '">Ver historial</a></td>' +
         '</tr>';
     }).join('');
 
-    return '<div class="section">' + resumen + '</div>' +
+    var tipos = CC.Model.cuotasPorTipo();
+    var cuotasTipo = tipos.length > 1 || (tipos[0] && tipos[0].tipo !== 'Sin tipo')
+      ? '<div class="panelbox"><div class="panelbox__head"><h3>Cuota de mantenimiento por tipo de casa</h3>' +
+        '<span class="eyebrow">' + esc(CC.fmt.periodo(ctx.periodo)) + '</span></div>' +
+        '<div class="tipos">' + tipos.map(function (t) {
+          return '<div class="tipo">' +
+            '<span class="tipo__nom">Tipo ' + esc(t.tipo) + '</span>' +
+            '<span class="tipo__m2">' + esc(t.m2) + ' m² · ' + t.casas + ' casas</span>' +
+            '<strong class="num">' + esc(t.min === t.max ? CC.fmt.money2(t.min) : CC.fmt.money(t.min) + '–' + CC.fmt.money(t.max)) + '</strong>' +
+            '<span class="tipo__m2">al mes · ' + esc(CC.fmt.money(t.total)) + ' entre todas</span>' +
+            '</div>';
+        }).join('') + '</div></div>'
+      : '';
+
+    return '<div class="section">' + resumen + cuotasTipo + '</div>' +
 
       '<div class="section">' +
       '<div class="section__head noprint" style="align-items:center">' +
@@ -277,13 +291,16 @@ CC.vistas.unidad = {
   },
   acciones: function (ctx) {
     if (!CC.Store.unidad(ctx.param)) return [];
-    return [
-      { texto: 'Registrar pago', icono: 'mas', clase: 'btn', accion: 'pagoUnidad' },
-      { texto: 'Anotar', icono: 'avisos', clase: 'btn btn--ghost', accion: 'nota' },
-      { texto: 'Recordatorio', icono: 'wa', clase: 'btn btn--ghost', accion: 'recordatorio' },
-      { texto: 'Imprimir', icono: 'imprimir', clase: 'btn btn--ghost', accion: 'imprimir' },
-      { texto: 'Editar', icono: 'ajustes', clase: 'btn btn--ghost', accion: 'editar' }
-    ];
+    var s = CC.Model.situacion(ctx.param, ctx.periodo);
+    var lista = [{ texto: 'Registrar pago', icono: 'mas', clase: 'btn', accion: 'pagoUnidad' }];
+    if (s.saldo > 0.005) {
+      lista.push({ texto: 'Avisar adeudo', icono: 'wa', clase: 'btn btn--ghost', accion: 'recordatorio' });
+      lista.push({ texto: CC.Model.convenioDe(ctx.param) ? 'Convenio' : 'Hacer convenio', icono: 'recibos', clase: 'btn btn--ghost', accion: 'convenio' });
+    }
+    lista.push({ texto: 'Anotar', icono: 'avisos', clase: 'btn btn--ghost', accion: 'nota' });
+    lista.push({ texto: 'Imprimir', icono: 'imprimir', clase: 'btn btn--ghost', accion: 'imprimir' });
+    lista.push({ texto: 'Editar', icono: 'ajustes', clase: 'btn btn--ghost', accion: 'editar' });
+    return lista;
   },
 
   render: function (ctx) {
@@ -371,11 +388,23 @@ CC.vistas.unidad = {
         nota: s.desde ? '<span>desde ' + esc(CC.fmt.periodo(s.desde)) + '</span>' : '<span>al corriente</span>'
       },
       {
-        lab: 'Recargo estimado', val: CC.fmt.money2(s.recargo),
-        tono: s.recargo > 0 ? 'warn' : null,
-        nota: '<span>calculado, aún no cargado</span>'
+        lab: 'Último pago',
+        val: s.ultimoPago ? CC.fmt.fecha(s.ultimoPago.fecha) : 'Sin pagos',
+        tono: s.ultimoPago && CC.per.diasEntre(s.ultimoPago.fecha, CC.per.hoyISO()) > 45 ? 'warn' : null,
+        nota: s.ultimoPago ? '<span>' + esc(CC.fmt.money2(s.ultimoPago.monto)) + ' · ' +
+          esc(CC.per.diasEntre(s.ultimoPago.fecha, CC.per.hoyISO())) + ' días</span>' : '<span>no hay pagos registrados</span>'
       }
     ]);
+
+    /* Convenio vigente, si lo hay */
+    var cv = CC.Model.convenioDe(u.id);
+    var bloqueConvenio = cv
+      ? '<div class="panelbox"><div class="panelbox__head"><h3>Convenio de pago ' +
+        esc(CC.Comprobantes.folio('CV-', cv.convenio.folio)) + '</h3>' +
+        '<button class="btn btn--sm btn--ghost" data-pdfcv="' + esc(cv.convenio.id) + '">' +
+        CC.ui.icono('imprimir', 'i--sm') + ' PDF para firmar</button></div>' +
+        '<div class="panelbox__body">' + CC.vistas.adeudos.convenioHTML(cv) + '</div></div>'
+      : '';
 
     /* --- Bitácora: todo lo que ha pasado con esta casa, en un solo hilo --- */
     var eventos = [];
@@ -398,7 +427,9 @@ CC.vistas.unidad = {
           fecha: p.fecha,
           etiqueta: 'Pago',
           tono: 'good',
-          titulo: 'Pagó ' + CC.fmt.money2(p.monto),
+          pagoId: p.id,
+          titulo: 'Pagó ' + CC.fmt.money2(p.monto) + ' · folio ' + CC.Comprobantes.folio('P-', p.folio) +
+            (p.convenioId ? ' · abono al convenio' : ''),
           detalle: [
             p.metodo,
             p.referencia ? 'referencia ' + p.referencia : '',
@@ -419,6 +450,17 @@ CC.vistas.unidad = {
           notaId: n.id
         });
       });
+
+    CC.Model.avisosDe(u.id).forEach(function (a) {
+      eventos.push({
+        fecha: a.fecha.slice(0, 10),
+        etiqueta: 'Aviso',
+        tono: 'warn',
+        titulo: 'Aviso de adeudo por ' + (a.canal === 'correo' ? 'correo' : 'WhatsApp'),
+        detalle: 'Se le avisó que debía ' + CC.fmt.money2(a.saldo) +
+          (a.meses > 1 ? ' (' + a.meses + ' meses)' : '') + '.'
+      });
+    });
 
     eventos.sort(function (a, b) { return (a.fecha || '') < (b.fecha || '') ? 1 : -1; });
 
@@ -441,6 +483,10 @@ CC.vistas.unidad = {
                 ? '<button class="iconbtn noprint" data-delnota="' + esc(e.notaId) + '" title="Borrar nota">' +
                   CC.ui.icono('cerrar', 'i--sm') + '</button>'
                 : '') +
+              (e.pagoId
+                ? '<button class="btn btn--sm btn--ghost noprint bitacora__accion" data-recpago="' + esc(e.pagoId) + '">' +
+                  CC.ui.icono('imprimir', 'i--sm') + ' Recibo</button>'
+                : '') +
               '</div>' +
               '<p class="bitacora__titulo">' + esc(e.titulo) + '</p>' +
               (e.detalle ? '<p class="bitacora__detalle">' + esc(e.detalle) + '</p>' : '') +
@@ -453,10 +499,16 @@ CC.vistas.unidad = {
 
     return '<p class="noprint"><a href="#/unidades" class="btn btn--sm btn--ghost">' +
       CC.ui.icono('volver', 'i--sm') + ' Padrón de casas</a></p>' +
-      cifras + cabecera + bitacora;
+      cifras + bloqueConvenio + cabecera + bitacora;
   },
 
   montar: function (raiz) {
+    raiz.querySelectorAll('[data-recpago]').forEach(function (b) {
+      b.onclick = function () { CC.Comprobantes.descargar(CC.Comprobantes.reciboPago(b.getAttribute('data-recpago'))); };
+    });
+    raiz.querySelectorAll('[data-pdfcv]').forEach(function (b) {
+      b.onclick = function () { CC.Comprobantes.descargar(CC.Comprobantes.convenio(b.getAttribute('data-pdfcv'))); };
+    });
     raiz.querySelectorAll('[data-delnota]').forEach(function (b) {
       b.onclick = function () {
         CC.ui.confirmar('Borrar nota',
@@ -514,34 +566,11 @@ CC.vistas.unidad = {
   editar: function (ctx) { formularioUnidad(CC.Store.unidad(ctx.param)); },
   imprimir: function () { window.print(); },
 
-  recordatorio: function (ctx) {
-    var u = CC.Store.unidad(ctx.param);
-    if (!u) return;
-    var texto = CC.Model.recordatorio(u.id, ctx.periodo);
-    var digitos = String(u.telefono || '').replace(/\D/g, '');
-    var tel = digitos.length === 10 ? '52' + digitos : digitos;
-    var esc = CC.ui.esc;
-
-    CC.ui.modal('Recordatorio de pago — casa ' + u.clave,
-      '<p class="field__hint" style="margin-bottom:10px">Revisa el texto antes de enviarlo. Se arma con el saldo real de la unidad.</p>' +
-      '<textarea class="input" id="txtRec" rows="12" style="font-size:13px">' + esc(texto) + '</textarea>' +
-      '<div class="formactions">' +
-      '<button type="button" class="btn btn--ghost" id="bCopiar">Copiar texto</button>' +
-      (tel
-        ? '<a class="btn" id="bWa" target="_blank" rel="noopener" href="https://wa.me/' + esc(tel) + '?text=' + encodeURIComponent(texto) + '">Abrir en WhatsApp</a>'
-        : '<span class="field__hint">Esta casa no tiene teléfono capturado</span>') +
-      '</div>',
-      function (cuerpo) {
-        var ta = cuerpo.querySelector('#txtRec');
-        cuerpo.querySelector('#bCopiar').onclick = function () {
-          CC.ui.copiar(ta.value, 'Recordatorio copiado');
-        };
-        var wa = cuerpo.querySelector('#bWa');
-        if (wa) {
-          ta.oninput = function () {
-            wa.href = 'https://wa.me/' + tel + '?text=' + encodeURIComponent(ta.value);
-          };
-        }
-      });
+  /** Aviso de adeudo por WhatsApp o correo, con el saldo real de la casa. */
+  recordatorio: function (ctx) { CC.vistas.adeudos.avisarUna(ctx.param, ctx.periodo); },
+  convenio: function (ctx) {
+    var cv = CC.Model.convenioDe(ctx.param);
+    if (cv) CC.vistas.adeudos.verConvenio(cv.convenio.id);
+    else CC.vistas.adeudos.convenio(ctx.param, ctx.periodo);
   }
 };

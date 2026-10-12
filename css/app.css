@@ -216,6 +216,68 @@ svg.i--sm{width:15px;height:15px}
   .tabbar__item.is-on{color:var(--accent);background:var(--accent-soft)}
 }
 
+/* ---------- Lo que toca hacer hoy ---------- */
+.cta{
+  display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 18px;
+  padding:14px 16px;border-radius:var(--r-md);
+  background:var(--warn-soft);border:1px solid var(--warn-line);color:var(--ink);
+}
+.cta__txt{flex:1 1 280px;font-size:13px;line-height:1.55;color:var(--ink-2)}
+.cta__txt strong{color:var(--ink);font-weight:600}
+.cta .btn{flex:none}
+
+/* ---------- Avisos de adeudo, casa por casa ---------- */
+.cola{display:flex;flex-direction:column;gap:14px}
+.cola__prog{display:flex;align-items:center;gap:12px;font-size:12px;color:var(--muted)}
+.cola__prog .bar__track{flex:1 1 auto;display:block}
+.cola__casa{padding:12px 14px;border-radius:var(--r-md);background:var(--surface-2);border:1px solid var(--rule);font-size:13.5px}
+.cola__datos{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:5px;font-size:12px;color:var(--muted)}
+.cola__datos b{color:var(--crit);font-weight:600}
+.cola__canales{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:9px}
+.cola__canales .btn{justify-content:center;padding-top:10px;padding-bottom:10px}
+.cola__falta{display:flex;align-items:center;justify-content:center;padding:10px;border:1px dashed var(--rule-2);
+  border-radius:var(--r-sm);font-size:12px;color:var(--muted)}
+
+/* ---------- Convenios ---------- */
+.conv{display:flex;flex-direction:column;gap:10px}
+.conv__cab{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:12.5px}
+.conv__barra{display:block;height:8px}
+.conv__sig{font-size:12.5px;color:var(--ink-2)}
+.conv .ledger td,.conv .ledger th{padding-top:8px;padding-bottom:8px}
+.convplan{margin-top:14px;border:1px solid var(--rule);border-radius:var(--r-md);overflow:hidden}
+.convplan .ledger td{padding-top:7px;padding-bottom:7px}
+.pill--btn{cursor:pointer;font:inherit;font-size:11px}
+.pill--btn:hover{filter:brightness(.97)}
+
+/* ---------- Casilla ---------- */
+.check{display:flex;align-items:center;gap:8px;margin-top:14px;padding:10px 12px;border-radius:var(--r-sm);
+  background:var(--good-soft);border:1px solid var(--good-line);font-size:12.5px;color:var(--good);cursor:pointer}
+.check input{width:16px;height:16px;accent-color:var(--good)}
+
+/* ---------- Pago registrado ---------- */
+.listo{display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;padding:6px 0 16px;font-size:13px}
+.listo__monto{font-size:28px;font-weight:600;color:var(--good);letter-spacing:-.02em}
+
+/* ---------- Cuota por tipo de casa ---------- */
+.tipos{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
+.tipo{display:flex;flex-direction:column;gap:3px;padding:14px 16px;border-right:1px solid var(--rule)}
+.tipo:last-child{border-right:0}
+.tipo__nom{font:600 10.5px/1.3 var(--f-sans);text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}
+.tipo__m2{font-size:11.5px;color:var(--muted)}
+.tipo strong{font-size:19px;font-weight:600;color:var(--ink);margin-top:2px}
+@media (max-width:560px){.tipo{border-right:0;border-bottom:1px solid var(--rule)}.tipo:last-child{border-bottom:0}}
+
+.bitacora__accion{margin-left:auto}
+.bitacora__cab .iconbtn + .bitacora__accion{margin-left:0}
+
+/* ---------- Menú "Más" del celular ---------- */
+.mas{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+.mas__item{display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:13px 12px;border-radius:var(--r-md);
+  border:1px solid var(--rule);background:var(--surface);font-size:13px;font-weight:500;color:var(--ink-2)}
+.mas__item.is-on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.mas__item svg.i{color:var(--accent)}
+button.tabbar__item{background:none;border:0;font-family:inherit;cursor:pointer}
+
 /* ---------- 5. Secciones y tarjetas ---------- */
 .section{display:flex;flex-direction:column;gap:12px}
 .section__head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:10px}

@@ -69,10 +69,50 @@ CC.fmt = (function () {
       var a = String(iso).slice(0, 10).split('-');
       return a.length < 3 ? iso : a[2] + '/' + a[1] + '/' + a[0];
     },
+    /** '2026-10-12' -> '12 de octubre de 2026' — para convenios y cartas */
+    fechaLarga: function (iso) {
+      if (!iso) return '';
+      var a = String(iso).slice(0, 10).split('-');
+      return Number(a[2]) + ' de ' + (MESES[Number(a[1]) - 1] || '') + ' de ' + a[0];
+    },
+    /** 2173.5 -> 'DOS MIL CIENTO SETENTA Y TRES PESOS 50/100 M.N.' — como en un cheque */
+    letras: letras,
     meses: MESES,
     mesesCorto: MESES_CORTO,
     cap: cap
   };
+
+  /* ---------- Cantidad con letra ---------- */
+  function letras(monto) {
+    var UNI = ['', 'UN', 'DOS', 'TRES', 'CUATRO', 'CINCO', 'SEIS', 'SIETE', 'OCHO', 'NUEVE',
+      'DIEZ', 'ONCE', 'DOCE', 'TRECE', 'CATORCE', 'QUINCE', 'DIECISÉIS', 'DIECISIETE',
+      'DIECIOCHO', 'DIECINUEVE', 'VEINTE', 'VEINTIÚN', 'VEINTIDÓS', 'VEINTITRÉS',
+      'VEINTICUATRO', 'VEINTICINCO', 'VEINTISÉIS', 'VEINTISIETE', 'VEINTIOCHO', 'VEINTINUEVE'];
+    var DEC = ['', '', '', 'TREINTA', 'CUARENTA', 'CINCUENTA', 'SESENTA', 'SETENTA', 'OCHENTA', 'NOVENTA'];
+    var CEN = ['', 'CIENTO', 'DOSCIENTOS', 'TRESCIENTOS', 'CUATROCIENTOS', 'QUINIENTOS',
+      'SEISCIENTOS', 'SETECIENTOS', 'OCHOCIENTOS', 'NOVECIENTOS'];
+
+    function cientos(n) {
+      if (n === 100) return 'CIEN';
+      var c = Math.floor(n / 100), r = n % 100, out = CEN[c];
+      if (r) {
+        var d = r < 30 ? UNI[r] : DEC[Math.floor(r / 10)] + (r % 10 ? ' Y ' + UNI[r % 10] : '');
+        out += (out ? ' ' : '') + d;
+      }
+      return out;
+    }
+
+    var total = Math.round(Math.abs(Number(monto) || 0) * 100);
+    var ent = Math.floor(total / 100), cent = total % 100;
+    var partes = [];
+    var millones = Math.floor(ent / 1000000), miles = Math.floor((ent % 1000000) / 1000), resto = ent % 1000;
+    if (millones) partes.push(millones === 1 ? 'UN MILLÓN' : cientos(millones) + ' MILLONES');
+    if (miles) partes.push(miles === 1 ? 'MIL' : cientos(miles) + ' MIL');
+    if (resto) partes.push(cientos(resto));
+    var texto = partes.length ? partes.join(' ') : 'CERO';
+    var moneda = ent === 1 ? 'PESO' : (ent && !miles && !resto ? 'DE PESOS' : 'PESOS');
+    return texto + ' ' + moneda + ' ' + String(cent).padStart(2, '0') + '/100 M.N.';
+  }
 })();
 
 /* Utilidades de periodo: los periodos son cadenas 'YYYY-MM' ordenables. */
@@ -81,7 +121,32 @@ CC.per = {
     var d = new Date();
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
   },
-  hoyISO: function () { return new Date().toISOString().slice(0, 10); },
+  /** Fecha local de hoy. toISOString() da la de Greenwich: después de las
+      18:00 en México ya diría mañana. */
+  hoyISO: function () {
+    var d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' +
+      String(d.getDate()).padStart(2, '0');
+  },
+  /** '2026-10-12' + 15 días */
+  masDias: function (iso, n) {
+    var a = String(iso).slice(0, 10).split('-');
+    var d = new Date(Number(a[0]), Number(a[1]) - 1, Number(a[2]) + n);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' +
+      String(d.getDate()).padStart(2, '0');
+  },
+  /** El mismo día n meses después; el 31 cae en el último día de los meses cortos */
+  masMeses: function (iso, n) {
+    var a = String(iso).slice(0, 10).split('-');
+    return CC.per.vence(CC.per.suma(a[0] + '-' + a[1], n), Number(a[2]));
+  },
+  /** Días de a hasta b */
+  diasEntre: function (a, b) {
+    var x = String(a).slice(0, 10).split('-'), y = String(b).slice(0, 10).split('-');
+    var da = Date.UTC(Number(x[0]), Number(x[1]) - 1, Number(x[2]));
+    var db = Date.UTC(Number(y[0]), Number(y[1]) - 1, Number(y[2]));
+    return Math.round((db - da) / 86400000);
+  },
   /** Suma (o resta) meses a un periodo */
   suma: function (p, n) {
     var a = p.split('-'), y = Number(a[0]), m = Number(a[1]) - 1 + n;

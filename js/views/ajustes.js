@@ -48,6 +48,9 @@ CC.vistas.ajustes = {
       campoNum('cMora', 'Recargo mensual (%)', c.tasaMoraMensual, 'Sobre el saldo vencido') +
       campoNum('cFondo', 'Fondo de reserva (%)', c.fondoReservaPct, 'Parte de lo cobrado que se aparta') +
       campoNum('cCaja', 'Saldo inicial en caja', c.saldoInicialCaja, 'Lo que había antes del primer registro') +
+      campoNum('cAvisoDias', 'Avisar a los … días', c.avisoDiasTras, 'Días después del vencimiento para el primer aviso') +
+      campoNum('cAvisoCada', 'Repetir aviso cada … días', c.avisoRepetirDias, 'Mientras la casa siga debiendo') +
+      campoNum('cFondoCaja', 'Fondo de caja chica', c.fondoCajaChica, 'Efectivo fijo para gastos menores') +
       '</div>' +
       '<div class="note" style="margin-top:16px"><div>' +
       'Con un presupuesto de <strong>' + esc(CC.fmt.money(c.presupuestoMensual)) + '</strong> repartido entre ' +
@@ -151,13 +154,16 @@ CC.vistas.ajustes = {
         diaVencimiento: Math.min(28, Math.max(1, Number(v('cDia')) || 10)),
         tasaMoraMensual: Number(v('cMora')) || 0,
         fondoReservaPct: Number(v('cFondo')) || 0,
-        saldoInicialCaja: Number(v('cCaja')) || 0
+        saldoInicialCaja: Number(v('cCaja')) || 0,
+        avisoDiasTras: Math.max(0, Math.round(Number(v('cAvisoDias')) || 0)),
+        avisoRepetirDias: Math.max(1, Math.round(Number(v('cAvisoCada')) || 7)),
+        fondoCajaChica: Math.max(0, Number(v('cFondoCaja')) || 0)
       });
       CC.ui.toast('Datos guardados', 'good');
     };
 
     /* Las reglas de cobro se guardan con el mismo boton */
-    ['cPresupuesto', 'cDia', 'cMora', 'cFondo', 'cCaja'].forEach(function (id) {
+    ['cPresupuesto', 'cDia', 'cMora', 'cFondo', 'cCaja', 'cAvisoDias', 'cAvisoCada', 'cFondoCaja'].forEach(function (id) {
       var e = raiz.querySelector('#' + id);
       if (e) e.onchange = function () { raiz.querySelector('#bGuardarCond').click(); };
     });

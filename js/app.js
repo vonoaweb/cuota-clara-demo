@@ -101,13 +101,29 @@
     });
   }
 
+  /* El número junto a Adeudos: casas a las que hoy les toca aviso. */
   function actualizarBadge() {
     var badge = document.getElementById('badgeMorosos');
-    var n = CC.Model.padron(periodoActivo).filter(function (x) {
-      return x.situacion.estado !== 'corriente';
-    }).length;
+    var n = CC.Model.porAvisar(periodoActivo).length;
     badge.hidden = n === 0;
     badge.textContent = String(n);
+    badge.title = n + (n === 1 ? ' casa por avisar' : ' casas por avisar');
+  }
+
+  /* En el celular la barra de abajo tiene cinco lugares; el resto va en "Más". */
+  function menuMas() {
+    var html = '<nav class="mas">' + Array.prototype.map.call(
+      document.querySelectorAll('.nav__list .nav__item, .nav__portal'),
+      function (a) {
+        var ruta = a.getAttribute('data-route');
+        var icono = a.querySelector('use').getAttribute('href').replace('#i-', '');
+        var nombre = a.querySelector('strong') ? a.querySelector('strong').textContent : a.querySelector('span').textContent;
+        return '<a class="mas__item' + (a.classList.contains('is-on') ? ' is-on' : '') + '" href="#/' + ruta + '">' +
+          CC.ui.icono(icono) + '<span>' + CC.ui.esc(nombre) + '</span></a>';
+      }).join('') + '</nav>';
+    CC.ui.modal('Secciones', html, function (cuerpo) {
+      cuerpo.querySelectorAll('a').forEach(function (a) { a.addEventListener('click', CC.ui.cerrarModal); });
+    });
   }
 
   /* ---------- Cableado ---------- */
@@ -139,6 +155,10 @@
 
     // Tema
     document.getElementById('btnTema').addEventListener('click', CC.ui.ciclarTema);
+
+    // Menú completo en el celular
+    var mas = document.getElementById('btnMas');
+    if (mas) mas.addEventListener('click', menuMas);
 
     // Navegacion
     window.addEventListener('hashchange', alCambiarHash);

@@ -48,7 +48,7 @@ CC.Seed = (function () {
      se le vuelve a sembrar con los datos nuevos en lugar de dejarle los viejos.
      Solo afecta a los datos de ejemplo: lo que alguien capturó de verdad
      (meta.demo === false) nunca se toca. */
-  var SEMILLA = 2;   // 1 = 18 departamentos en torres · 2 = 150 casas
+  var SEMILLA = 3;   // 1 = 18 departamentos · 2 = 150 casas · 3 = + convenios, avisos y caja chica
 
   var NOMBRES = [
     'María', 'José', 'Guadalupe', 'Juan', 'Alejandra', 'Ricardo', 'Verónica', 'Martín',
@@ -272,8 +272,11 @@ CC.Seed = (function () {
       difusiones: [],
       documentos: [],
       reglamento: { titulo: 'Reglamento Interno', aprobado: '', nota: '', capitulos: [] },
+      convenios: [],
+      avisosAdeudo: [],
+      cajaChica: [],
       meta: {
-        demo: false, folioRecibo: 0,
+        demo: false, folioRecibo: 0, folioPago: 0, folioCaja: 0, folioConvenio: 0,
         creado: new Date().toISOString(), actualizado: new Date().toISOString()
       }
     };
@@ -507,6 +510,124 @@ CC.Seed = (function () {
       if (casa) notas.push({ id: 'not_' + (i + 1), unidadId: casa.id, fecha: n[1], tipo: n[0], texto: n[2] });
     });
 
+    /* --- Lo que debía una casa al cierre de un periodo --- */
+    function deudaAl(u, hasta) {
+      var cargado = cargos.filter(function (c) { return c.unidadId === u.id && c.periodo <= hasta; })
+        .reduce(function (a, c) { return a + c.monto; }, 0);
+      var pagado = pagos.filter(function (x) { return x.unidadId === u.id && x.periodo <= hasta; })
+        .reduce(function (a, x) { return a + x.monto; }, 0);
+      return Math.round((cargado - pagado) * 100) / 100;
+    }
+
+    /* --- Convenios de pago: uno al día y uno atrasado --- */
+    var graves = morosos.filter(function (k, i) { return i > 0 && adeudos[k] >= 3; });
+    var convenios = [];
+    [
+      // [casa, periodo en que se firmó, día, parcialidades, día del primer pago]
+      [graves[graves.length - 1], periodos[2], 20, 4, 28],
+      [graves[Math.floor(graves.length / 2)], periodos[1], 15, 3, 20]
+    ].forEach(function (d, i) {
+      var casa = casaPorClave(d[0]);
+      if (!casa) return;
+      var adeudo = deudaAl(casa, d[1]);
+      if (!(adeudo > 0)) return;
+      var monto = Math.floor((adeudo / d[3]) * 100) / 100;
+      var cv = {
+        id: 'cnv_' + (i + 1), folio: i + 1, unidadId: casa.id,
+        fecha: d[1] + '-' + String(d[2]).padStart(2, '0'),
+        adeudo: adeudo, parcialidades: d[3], monto: monto, cada: 'mes',
+        primera: d[1] + '-' + String(d[4]).padStart(2, '0'),
+        detalle: 'por cuotas de mantenimiento pendientes',
+        nota: 'Aprobado por el comité.', estado: 'activo', registrado: new Date().toISOString()
+      };
+      convenios.push(cv);
+      // la primera parcialidad ya se pagó
+      pagos.push({
+        id: 'pag_cnv_' + (i + 1), unidadId: casa.id, periodo: d[1], fecha: cv.primera,
+        monto: monto, metodo: 'Transferencia', referencia: String(700100 + i * 37),
+        convenioId: cv.id, nota: ''
+      });
+      notas.push({
+        id: 'not_cnv_' + (i + 1), unidadId: casa.id, fecha: cv.fecha, tipo: 'gestion',
+        texto: 'Convenio de pago CV-000' + (i + 1) + ': $' + adeudo.toFixed(2) + ' en ' + d[3] +
+          ' parcialidades. Firmó en la administración.'
+      });
+    });
+    var enConvenio = {};
+    convenios.forEach(function (cv) { enConvenio[cv.unidadId] = 1; });
+
+    /* --- Avisos de adeudo ya enviados: a unas casas hace poco, a otras hace semanas --- */
+    var avisosAdeudo = [];
+    var hoyISO = CC.per.hoyISO();
+    morosos.forEach(function (k, i) {
+      var casa = casaPorClave(k);
+      if (!casa || enConvenio[casa.id] || i % 3 === 2) return;
+      var reciente = i % 3 === 0;
+      avisosAdeudo.push({
+        id: 'ava_' + i, unidadId: casa.id,
+        canal: reciente ? 'whatsapp' : 'correo',
+        fecha: CC.per.masDias(hoyISO, reciente ? -3 : -12) + 'T10:' + String(10 + i % 40).padStart(2, '0') + ':00',
+        saldo: deudaAl(casa, reciente ? hoy : periodos[2]),
+        meses: adeudos[k]
+      });
+    });
+
+    /* --- Caja chica: el pago semanal a los de la basura y otros gastos menores --- */
+    var FONDO = 5000;
+    var diaHoy = Number(hoyISO.slice(8, 10));
+    var cajaChica = [];
+    var movsCaja = [];
+    var recolector = 'Juan Carlos Medina Ruiz';
+    function casaN(n) { return unidades[n % unidades.length]; }
+
+    [periodos[2], periodos[3]].forEach(function (per, k) {
+      var esActual = per === hoy;
+      var lista = [];
+      lista.push([k === 0 ? 1 : 2, 'reposicion', k === 0 ? 'Apertura del fondo de caja chica' : 'Reposición de caja chica', 0]);
+      [3, 10, 17, 24].forEach(function (d) {
+        lista.push([d, 'egreso', 'Pago semanal a recolectores de basura', 400, 'Basura', recolector, 'Camión municipal, ruta 14']);
+      });
+      lista.push([5, 'egreso', 'Garrafones de agua para caseta', 165, 'Agua', 'Purificadora La Gota']);
+      lista.push([8, 'ingreso', 'Venta de tarjeta de acceso', 350, 'Tarjeta de acceso', null, '', casaN(37 + k * 41)]);
+      if (k === 0) {
+        lista.push([19, 'egreso', 'Material de limpieza para el salón', 386.5, 'Limpieza', 'Abarrotes Doña Mary']);
+        lista.push([21, 'ingreso', 'Renta del salón de eventos', 800, 'Salón', null, '', casaN(88)]);
+        lista.push([26, 'egreso', 'Copias del reglamento para la asamblea', 240, 'Papelería', 'Papelería Escolar Tlajomulco']);
+      }
+      lista.sort(function (a, b) { return a[0] - b[0]; }).forEach(function (m) {
+        if (esActual && m[0] > diaHoy) return;
+        movsCaja.push({ periodo: per, dia: m[0], tipo: m[1], concepto: m[2], monto: m[3],
+          categoria: m[4] || '', nombre: m[5] || '', nota: m[6] || '', casa: m[7] || null });
+      });
+    });
+
+    var saldoCaja = 0, folioCaja = 0;
+    movsCaja.forEach(function (m, i) {
+      var fecha = m.periodo + '-' + String(m.dia).padStart(2, '0');
+      var monto = m.tipo === 'reposicion' ? Math.round((FONDO - saldoCaja) * 100) / 100 : m.monto;
+      if (!(monto > 0)) return;
+      var mov = {
+        id: 'caj_' + (i + 1), folio: ++folioCaja, tipo: m.tipo, fecha: fecha, periodo: m.periodo,
+        concepto: m.concepto, categoria: m.categoria, monto: monto, metodo: 'Efectivo',
+        nombre: m.casa ? (m.casa.inquilino || m.casa.propietario) : m.nombre,
+        unidadId: m.casa ? m.casa.id : null, identificacion: m.nombre === recolector ? 'INE 2468013579' : '',
+        firmaId: null, fotoId: null, nota: m.nota,
+        firmaInline: m.tipo === 'egreso' ? firmaEjemplo(TRAZOS[i % 2]) : null,
+        registrado: new Date().toISOString()
+      };
+      if (m.tipo === 'reposicion') {
+        mov.metodo = 'Retiro de la cuenta';
+        mov.gastoId = 'gas_caja_' + mov.folio;
+        gastos.push({
+          id: mov.gastoId, periodo: m.periodo, fecha: fecha, categoria: 'Caja chica',
+          proveedor: 'Reposición de fondo', concepto: m.concepto, monto: monto,
+          estado: 'pagado', metodo: 'Retiro de la cuenta', folio: ''
+        });
+      }
+      saldoCaja += (m.tipo === 'egreso' ? -1 : 1) * monto;
+      cajaChica.push(mov);
+    });
+
     unidades.forEach(function (u) { delete u._cuota; });
 
     return {
@@ -523,8 +644,12 @@ CC.Seed = (function () {
       difusiones: [],
       documentos: documentosEjemplo(hoy),
       reglamento: reglamentoEjemplo(),
+      convenios: convenios,
+      avisosAdeudo: avisosAdeudo,
+      cajaChica: cajaChica,
       meta: {
         demo: true, semilla: SEMILLA, folioRecibo: 2,
+        folioCaja: folioCaja, folioConvenio: convenios.length,
         creado: new Date().toISOString(), actualizado: new Date().toISOString()
       }
     };

@@ -245,7 +245,7 @@ input[type=range]::-moz-range-thumb{
       </svg>
       <span class="wm">VONOA<em>WEB</em></span>
     </a>
-    <span class="folio" id="tFolio">COT-2609</span>
+    <span class="folio" id="tFolio">COT-2610</span>
   </div>
 </header>
 
@@ -323,6 +323,7 @@ input[type=range]::-moz-range-thumb{
     <h2 id="hIncluye">Incluye</h2>
     <ul class="lista">
       <li>Todo lo que vieron en el sistema, con sus 150 casas y su reglamento ya capturados</li>
+      <li><strong>Nuevo:</strong> avisos de adeudo por WhatsApp y correo a cada casa, pagos en parcialidades, recibo de cada pago y caja chica con recibo automático</li>
       <li>Instalación en la computadora de la administración</li>
       <li>Capacitación al comité</li>
       <li>Listo en <span data-t="semanasEntrega">3</span> semanas, con <span data-t="garantiaDias">30</span> días de garantía</li>
@@ -445,11 +446,11 @@ input[type=range]::-moz-range-thumb{
   <div class="cta">
     <a class="btn" id="aWhats" target="_blank" rel="noopener"
        href="https://wa.me/5215644645574">Lo queremos · WhatsApp</a>
-    <button class="btn btn--ghost" type="button" id="bPdf">Guardar PDF</button>
+    <a class="btn btn--ghost" id="bPdf" href="cotizacion-cuota-clara-vonoa.pdf" download="Cotizacion Cuota Clara - Vonoa Web.pdf">Descargar PDF</a>
   </div>
 
   <p class="letra" id="tLetra">
-    Precios en pesos mexicanos, más IVA. Propuesta del 25 de septiembre de 2026,
+    Precios en pesos mexicanos, más IVA. Propuesta del 12 de octubre de 2026,
     vigente 30 días.
   </p>
 
@@ -466,8 +467,8 @@ input[type=range]::-moz-range-thumb{
 /* Todo lo que se negocia vive aquí. Cambiar un número actualiza la página entera. */
 var PROPUESTA = {
   cliente: 'Comité de Administración',
-  folio: 'COT-2609',
-  fecha: '25 de septiembre de 2026',
+  folio: 'COT-2610',
+  fecha: '12 de octubre de 2026',
   precio: 23000,                     // pago único del sistema
   mesesMaximos: 12,                  // se puede pagar hasta en 12 meses, sin intereses
   mantenimientoMensual: 450,         // se cobra al terminar los meses incluidos
@@ -596,7 +597,7 @@ var PROPUESTA = {
     });
   });
 
-  $('bPdf').addEventListener('click', function () { window.print(); });
+  /* "Descargar PDF" baja la versión de dos hojas (pdf.html impresa); ya no imprime esta página. */
 
   pintar();
 })();

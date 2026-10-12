@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cotización Cuota Clara · Vonoa Web</title>
+<!-- Versión imprimible de la cotización: dos hojas carta. El PDF se genera con
+     Edge sin ventana (ver ESTADO-DEL-PROYECTO.md). Los importes son los mismos
+     del objeto PROPUESTA de index.html: si cambia uno, cambia aquí también. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+@page{size:letter;margin:0}
+:root{
+  --deep:#070F21; --navy:#02215D; --cyan:#2EE9B9; --blue:#1CA0F4;
+  --ink:#0B1730; --ink-2:#33415C; --muted:#5D6B84; --line:#DDE4EE; --soft:#F2F6FA;
+  --grad:linear-gradient(135deg,#2EE9B9 0%,#1CA0F4 100%);
+  --display:'Sora',system-ui,sans-serif; --body:'DM Sans',system-ui,sans-serif;
+}
+*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+html,body{margin:0;background:#8792A6}
+body{font-family:var(--body);color:var(--ink);font-size:10.5pt;line-height:1.5}
+h1,h2,h3,p{margin:0}
+.hoja{
+  width:8.5in;height:11in;margin:24px auto;background:#fff;position:relative;overflow:hidden;
+  display:flex;flex-direction:column;
+}
+@media print{html,body{background:#fff}.hoja{margin:0;page-break-after:always;break-after:page}.hoja:last-child{page-break-after:auto;break-after:auto}}
+
+/* ---------- Banda de marca ---------- */
+.banda{background:var(--deep);color:#fff;padding:26px 52px 22px;display:flex;align-items:center;justify-content:space-between;gap:20px}
+.marca{display:flex;align-items:center;gap:11px}
+.wm{font-family:var(--display);font-weight:700;font-size:17pt;letter-spacing:.02em}
+.wm em{font-style:normal;color:var(--cyan);font-size:8pt;letter-spacing:.3em;margin-left:5px;vertical-align:3px}
+.datos{text-align:right;font-size:8.5pt;color:#B6C2D8;line-height:1.55}
+.datos b{display:block;font-family:var(--display);font-size:8pt;letter-spacing:.2em;color:var(--cyan);font-weight:600}
+.datos strong{color:#fff;font-weight:600}
+.hilo{height:4px;background:var(--grad)}
+.banda--chica{padding:16px 52px}
+.banda--chica .wm{font-size:13pt}
+
+.cuerpo{padding:30px 52px 0;flex:1 1 auto;display:flex;flex-direction:column}
+.eyebrow{font-family:var(--display);font-size:7.5pt;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#0E9C7C}
+h1{font-family:var(--display);font-weight:700;font-size:26pt;line-height:1.08;letter-spacing:-.02em;margin-top:8px}
+.grad{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;display:inline-block;padding-right:3px;margin-right:-3px}
+.lead{margin-top:8px;font-size:12pt;color:var(--ink-2)}
+
+/* ---------- Precio ---------- */
+.precio{margin-top:20px;display:grid;grid-template-columns:1.25fr 1fr;gap:14px}
+.precio__total{border:1.5px solid var(--ink);border-radius:12px;padding:14px 18px}
+.precio__n{font-family:var(--display);font-weight:700;font-size:34pt;letter-spacing:-.03em;line-height:1}
+.precio__u{display:block;margin-top:5px;font-size:9.5pt;color:var(--muted)}
+.precio__anticipo{background:var(--deep);color:#fff;border-radius:12px;padding:14px 18px}
+.precio__anticipo .eyebrow{color:var(--cyan)}
+.precio__anticipo strong{display:block;font-family:var(--display);font-size:19pt;letter-spacing:-.02em;margin-top:6px;line-height:1.1}
+.precio__anticipo span{display:block;margin-top:5px;font-size:9pt;color:#B6C2D8}
+
+/* ---------- Lo que hace ---------- */
+h2{font-family:var(--display);font-weight:700;font-size:13.5pt;letter-spacing:-.01em}
+.sec{margin-top:24px}
+.hoja + .hoja .sec{margin-top:18px}
+.sec__head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:12px}
+.sec__head p{font-size:9pt;color:var(--muted)}
+.funciones{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.f{border:1px solid var(--line);border-radius:10px;padding:12px 14px 12px;position:relative}
+.f--nuevo{border-color:#9FE3CF;background:#F3FCF9}
+.f__tag{position:absolute;top:11px;right:12px;font-family:var(--display);font-size:6.5pt;font-weight:600;letter-spacing:.14em;
+  color:#0E8A6E;background:#DDF7EF;border-radius:99px;padding:2px 8px}
+.f h3{font-family:var(--display);font-size:10.5pt;font-weight:600;letter-spacing:-.005em;padding-right:52px}
+.f p{margin-top:4px;font-size:9pt;line-height:1.45;color:var(--ink-2)}
+.ademas{margin-top:10px;font-size:9pt;color:var(--muted)}
+.ademas b{color:var(--ink-2);font-weight:600}
+
+.cierre{margin-top:auto;margin-bottom:30px;display:grid;grid-template-columns:1fr 212px;gap:12px}
+.trabajo{border-radius:12px;background:var(--soft);padding:16px 18px;display:flex;flex-direction:column;gap:10px}
+.qrcaja{border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:grid;grid-template-columns:78px 1fr;gap:12px;align-items:center}
+.qrcaja svg{width:78px;height:78px;display:block}
+.qrcaja b{display:block;font-family:var(--display);font-size:9.5pt;line-height:1.25}
+.qrcaja span{display:block;margin-top:3px;font-size:8pt;color:var(--muted);line-height:1.35}
+.trabajo h2{font-size:11pt}
+.trabajo ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:9pt;color:var(--ink-2)}
+.trabajo li::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--grad);margin-right:7px;vertical-align:1px}
+
+/* ---------- Hoja 2 ---------- */
+.planes{width:100%;border-collapse:separate;border-spacing:0;font-size:10pt}
+.planes th{font-family:var(--display);font-size:7.5pt;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);
+  text-align:left;padding:0 12px 7px;border-bottom:1.5px solid var(--ink)}
+.planes td{padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+.planes .n{font-family:var(--display);font-weight:600;white-space:nowrap;text-align:right}
+.planes th.n{text-align:right}
+.planes .nom{font-weight:600}
+.planes small{display:block;color:var(--muted);font-size:8.5pt;font-weight:400}
+.planes tr.destacado td{background:#F3FCF9}
+
+.dos{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.caja{border:1px solid var(--line);border-radius:10px;padding:13px 15px}
+.caja h3{font-family:var(--display);font-size:10.5pt;font-weight:600}
+.caja p{margin-top:4px;font-size:9pt;color:var(--ink-2)}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.chips span{font-size:8pt;border:1px solid var(--line);border-radius:99px;padding:2px 9px;color:var(--ink-2)}
+.comp{display:flex;flex-direction:column;gap:7px;margin-top:9px}
+.comp__fila{display:grid;grid-template-columns:62px 1fr auto;gap:8px;align-items:center;font-size:8.5pt;color:var(--ink-2)}
+.comp__barra{height:8px;border-radius:4px;background:#EEF2F7;overflow:hidden}
+.comp__barra i{display:block;height:100%;border-radius:4px;background:#C2CCDA}
+.comp__barra i.v{background:var(--grad)}
+.comp__fila b{font-family:var(--display);font-weight:600;color:var(--ink);font-size:9pt}
+.comp__ahorro{margin-top:6px;font-size:9pt}
+.comp__ahorro strong{color:#0E8A6E}
+
+.pasos{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.pasos li{border-top:3px solid var(--ink);padding-top:9px;font-size:9pt;color:var(--ink-2)}
+.pasos b{display:block;font-family:var(--display);font-size:10pt;color:var(--ink);margin-bottom:2px}
+.pasos em{font-style:normal;font-family:var(--display);font-weight:700;color:#0E9C7C;margin-right:4px}
+
+.claves{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.claves div{background:var(--soft);border-radius:9px;padding:10px 11px}
+.claves b{display:block;font-family:var(--display);font-size:9pt;line-height:1.3}
+.claves span{display:block;margin-top:3px;font-size:8pt;color:var(--muted);line-height:1.35}
+.terminos{margin-top:9px;columns:2;column-gap:20px;font-size:8.3pt;color:var(--ink-2);padding:0;list-style:none}
+.terminos li{break-inside:avoid;margin-bottom:4px;padding-left:10px;position:relative;line-height:1.4}
+.terminos li::before{content:"";position:absolute;left:0;top:6px;width:4px;height:4px;border-radius:50%;background:var(--muted)}
+
+.firmas{display:grid;grid-template-columns:1fr 1fr;gap:34px;margin-top:auto;padding-top:30px}
+.firma{border-top:1px solid var(--ink);padding-top:6px;font-size:8.5pt;color:var(--muted);text-align:center}
+.firma b{display:block;color:var(--ink);font-size:9pt}
+.letra{margin-top:12px;font-size:7.6pt;color:var(--muted);line-height:1.45}
+.pie{margin-top:14px;padding:11px 52px 14px;border-top:1px solid var(--line);display:flex;justify-content:space-between;font-size:8pt;color:var(--muted)}
+.pie b{color:var(--ink)}
+</style>
+</head>
+<body>
+
+<!-- ===================== HOJA 1 ===================== -->
+<section class="hoja">
+  <header class="banda">
+    <div class="marca">
+      <svg viewBox="0 0 210 210" width="34" height="34" aria-hidden="true">
+        <defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2EE9B9"/><stop offset="1" stop-color="#1CA0F4"/></linearGradient></defs>
+        <path fill="url(#lg)" fill-rule="evenodd" d="M 0 18 L 39 91 L 49 72 L 9 0 L 0 18 Z M 161 72 L 171 91 L 210 18 L 201 0 L 161 72 Z M 63 77 L 72 84 C 89 68 121 68 140 84 L 147 77 C 135 65 121 61 105 61 C 89 61 75 65 63 77 Z M 105 173 L 65 100 L 56 119 L 105 210 L 154 119 L 145 100 L 105 173 Z"/>
+      </svg>
+      <span class="wm">VONOA<em>WEB</em></span>
+    </div>
+    <div class="datos">
+      <b>COTIZACIÓN</b>
+      <strong>COT-2610</strong> · 12 de octubre de 2026<br>
+      Para: <strong>Comité de Administración</strong>
+    </div>
+  </header>
+  <div class="hilo"></div>
+
+  <div class="cuerpo">
+    <p class="eyebrow">Cuota Clara · sistema de administración</p>
+    <h1>Se compra una vez.<br>El sistema <span class="grad">es suyo.</span></h1>
+    <p class="lead">La administración de sus 150 casas, instalada en su computadora.</p>
+
+    <div class="precio">
+      <div class="precio__total">
+        <span class="precio__n">$23,000</span>
+        <span class="precio__u">+ IVA · precio total · de contado o hasta 12 meses sin intereses</span>
+      </div>
+      <div class="precio__anticipo">
+        <span class="eyebrow">Para empezar</span>
+        <strong>Anticipo desde $1,916.67</strong>
+        <span>+ IVA · la primera de 12 mensualidades, o la mitad si es de contado</span>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec__head">
+        <h2>Lo que hace por ustedes</h2>
+        <p>Todo funciona en el demo: vonoaweb.github.io/cuota-clara-demo</p>
+      </div>
+      <div class="funciones">
+        <div class="f f--nuevo"><span class="f__tag">NUEVO</span>
+          <h3>Avisos a quien no pagó</h3>
+          <p>Detecta qué casas no pagaron y deja listo su aviso por WhatsApp y por correo, con su saldo. Un clic y se envía; queda anotado en su historial.</p></div>
+        <div class="f f--nuevo"><span class="f__tag">NUEVO</span>
+          <h3>Pagos en parcialidades</h3>
+          <p>Convenios para ponerse al corriente: parte el adeudo en pagos con fecha, imprime el convenio para firmar y avisa si una parcialidad se atrasa.</p></div>
+        <div class="f f--nuevo"><span class="f__tag">NUEVO</span>
+          <h3>Caja chica con recibo automático</h3>
+          <p>El pago a los de la basura y otros gastos en efectivo: se captura, firman en la pantalla y el recibo con su concepto se descarga solo en PDF.</p></div>
+        <div class="f f--nuevo"><span class="f__tag">NUEVO</span>
+          <h3>Recibo de cada pago</h3>
+          <p>Cada cuota que entra tiene su recibo con folio y cantidad con letra, listo para imprimir o mandarlo al vecino por WhatsApp.</p></div>
+        <div class="f">
+          <h3>El historial de cada casa</h3>
+          <p>Desde cuándo dejó de pagar, su último pago, avisos, convenios y recibos, en una sola línea de tiempo.</p></div>
+        <div class="f">
+          <h3>Cuotas, gastos y cierre del mes</h3>
+          <p>La cuota de cada casa por su tipo, los gastos contra el presupuesto y el reporte listo para la asamblea.</p></div>
+      </div>
+      <p class="ademas"><b>Además:</b> reglamento con buscador · correos a todos los vecinos · recibo del jardinero con firma y foto · expediente del condominio · su base de datos en un archivo que pueden guardar en USB.</p>
+    </div>
+
+    <div class="cierre">
+      <div class="trabajo">
+        <h2>Y nosotros hacemos el resto</h2>
+        <ul>
+          <li>Capturamos sus 150 casas y sus saldos</li>
+          <li>Cargamos su reglamento</li>
+          <li>Lo instalamos en su computadora</li>
+          <li>Capacitamos al comité</li>
+          <li>Los acompañamos en la primera cobranza</li>
+          <li>30 días de garantía</li>
+        </ul>
+      </div>
+      <div class="qrcaja">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 35 35" class="qr"><path stroke="#070f21" d="M1 1.5h7m1 0h1m2 0h1m2 0h1m4 0h5m2 0h7m-33 1h1m5 0h1m4 0h3m4 0h1m7 0h1m5 0h1m-33 1h1m1 0h3m1 0h1m2 0h1m4 0h1m1 0h1m1 0h1m2 0h1m2 0h1m1 0h1m1 0h3m1 0h1m-33 1h1m1 0h3m1 0h1m2 0h1m3 0h4m1 0h2m2 0h1m3 0h1m1 0h3m1 0h1m-33 1h1m1 0h3m1 0h1m1 0h2m1 0h2m2 0h1m2 0h1m2 0h1m1 0h1m2 0h1m1 0h3m1 0h1m-33 1h1m5 0h1m1 0h3m2 0h1m6 0h1m1 0h1m3 0h1m5 0h1m-33 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-22 1h1m1 0h1m2 0h1m2 0h4m1 0h1m-24 1h7m3 0h1m1 0h1m3 0h1m1 0h1m2 0h1m1 0h1m2 0h2m3 0h1m-31 1h4m1 0h1m4 0h2m1 0h1m1 0h5m1 0h1m2 0h2m1 0h2m1 0h1m-32 1h6m2 0h1m2 0h1m2 0h3m3 0h1m3 0h1m2 0h1m1 0h2m-28 1h1m3 0h1m2 0h1m1 0h2m1 0h3m1 0h4m4 0h4m-32 1h1m2 0h1m2 0h2m1 0h1m1 0h3m9 0h3m2 0h2m2 0h1m-33 1h2m3 0h1m2 0h2m2 0h1m2 0h5m1 0h1m1 0h1m2 0h1m2 0h1m1 0h2m-32 1h4m1 0h5m1 0h1m2 0h1m4 0h3m1 0h3m1 0h2m1 0h1m-32 1h1m1 0h2m4 0h1m1 0h2m1 0h2m2 0h1m1 0h4m2 0h2m1 0h1m1 0h1m-31 1h3m2 0h2m4 0h1m3 0h1m1 0h1m1 0h2m1 0h4m1 0h2m3 0h1m-33 1h2m2 0h1m3 0h1m4 0h1m1 0h1m2 0h3m2 0h1m1 0h3m1 0h2m1 0h1m-33 1h9m1 0h6m2 0h1m1 0h3m1 0h1m2 0h2m1 0h2m-32 1h2m2 0h1m2 0h3m2 0h1m1 0h5m2 0h3m1 0h1m1 0h4m1 0h1m-33 1h3m1 0h3m1 0h1m1 0h1m4 0h2m2 0h1m2 0h3m2 0h3m1 0h2m-33 1h1m4 0h1m4 0h2m1 0h1m3 0h1m1 0h3m1 0h1m2 0h1m2 0h1m2 0h1m-33 1h1m5 0h1m3 0h2m1 0h2m2 0h2m1 0h1m4 0h1m3 0h1m1 0h1m-32 1h1m4 0h1m1 0h4m1 0h3m3 0h1m1 0h2m1 0h2m1 0h1m2 0h2m-31 1h1m1 0h3m1 0h3m2 0h3m1 0h3m1 0h1m4 0h5m2 0h2m-25 1h1m4 0h1m4 0h4m2 0h1m3 0h1m1 0h1m1 0h1m-33 1h7m1 0h1m3 0h1m1 0h1m1 0h1m3 0h5m1 0h1m1 0h1m1 0h1m-31 1h1m5 0h1m1 0h1m1 0h2m2 0h1m1 0h6m1 0h2m3 0h3m1 0h1m-33 1h1m1 0h3m1 0h1m1 0h1m1 0h3m9 0h1m1 0h6m-30 1h1m1 0h3m1 0h1m1 0h4m3 0h1m1 0h1m1 0h2m2 0h1m1 0h1m2 0h1m1 0h1m1 0h1m-33 1h1m1 0h3m1 0h1m1 0h4m4 0h1m1 0h1m1 0h1m1 0h2m2 0h2m1 0h1m-30 1h1m5 0h1m1 0h5m3 0h2m2 0h2m3 0h2m1 0h3m-31 1h7m3 0h3m1 0h3m1 0h1m3 0h4m1 0h1m1 0h1m1 0h1"/></svg>
+        <div><b>Véanlo funcionando</b><span>Apunten la cámara del celular. Es el sistema con datos de ejemplo.</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== HOJA 2 ===================== -->
+<section class="hoja">
+  <header class="banda banda--chica">
+    <div class="marca">
+      <svg viewBox="0 0 210 210" width="24" height="24" aria-hidden="true">
+        <path fill="url(#lg)" fill-rule="evenodd" d="M 0 18 L 39 91 L 49 72 L 9 0 L 0 18 Z M 161 72 L 171 91 L 210 18 L 201 0 L 161 72 Z M 63 77 L 72 84 C 89 68 121 68 140 84 L 147 77 C 135 65 121 61 105 61 C 89 61 75 65 63 77 Z M 105 173 L 65 100 L 56 119 L 105 210 L 154 119 L 145 100 L 105 173 Z"/>
+      </svg>
+      <span class="wm">VONOA<em>WEB</em></span>
+    </div>
+    <div class="datos"><strong>COT-2610</strong> · Cuota Clara · hoja 2 de 2</div>
+  </header>
+  <div class="hilo"></div>
+
+  <div class="cuerpo" style="padding-top:24px">
+    <div class="sec" style="margin-top:0">
+      <div class="sec__head"><h2>Cómo se paga</h2><p>Sin intereses · más IVA</p></div>
+      <table class="planes">
+        <thead><tr><th>Plan</th><th class="n">Anticipo al firmar</th><th class="n">Después</th><th class="n">Total</th></tr></thead>
+        <tbody>
+          <tr><td class="nom">De contado<small>La mitad al firmar y la mitad al entregar</small></td>
+            <td class="n">$11,500</td><td class="n">$11,500 al entregar</td><td class="n">$23,000</td></tr>
+          <tr><td class="nom">6 meses<small>La primera al firmar, las demás cada mes</small></td>
+            <td class="n">$3,833.33</td><td class="n">5 de $3,833.33</td><td class="n">$23,000</td></tr>
+          <tr class="destacado"><td class="nom">12 meses<small>La primera al firmar, las demás cada mes</small></td>
+            <td class="n">$1,916.67</td><td class="n">11 de $1,916.67</td><td class="n">$23,000</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="dos">
+      <div class="caja">
+        <h3>Mantenimiento: el primer año va incluido</h3>
+        <p>Después, <b>$450 al mes</b>. Lo pueden dejar cuando quieran; el sistema sigue funcionando.</p>
+        <div class="chips"><span>Actualizaciones</span><span>Corrección de fallas</span><span>Soporte por WhatsApp</span><span>Ajustes menores</span></div>
+      </div>
+      <div class="caja">
+        <h3>En 3 años, contra los $1,500 al mes de hoy</h3>
+        <div class="comp">
+          <div class="comp__fila"><span>CondoVive</span><span class="comp__barra"><i style="width:100%"></i></span><b>$54,000</b></div>
+          <div class="comp__fila"><span>Su sistema</span><span class="comp__barra"><i class="v" style="width:62.6%"></i></span><b>$33,800</b></div>
+        </div>
+        <p class="comp__ahorro">Ahorran <strong>$20,200 en 3 años</strong> y $45,400 en 5. Desde el mes 17 ya les sale más barato.</p>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec__head"><h2>Cómo empezamos</h2><p>Listo en 3 semanas</p></div>
+      <ol class="pasos">
+        <li><b><em>1</em>Firman y dan el anticipo</b>Con eso apartamos su lugar y empezamos.</li>
+        <li><b><em>2</em>Nos pasan su información</b>Padrón, saldos y reglamento, en Excel o como lo tengan.</li>
+        <li><b><em>3</em>Lo instalamos y capacitamos</b>En 3 semanas ya cobran con el sistema nuevo.</li>
+      </ol>
+    </div>
+
+    <div class="sec">
+      <div class="sec__head"><h2>Términos, en corto</h2><p>Completos en vonoaweb.com/terminos-condiciones.html</p></div>
+      <div class="claves">
+        <div><b>Es suyo al terminar de pagar</b><span>Sin renta, para siempre.</span></div>
+        <div><b>30 días de garantía</b><span>Cualquier falla del sistema se corrige sin costo.</span></div>
+        <div><b>El mantenimiento es opcional</b><span>Lo dejan cuando quieran.</span></div>
+        <div><b>Su información es suya</b><span>Vive en su computadora.</span></div>
+      </div>
+      <ul class="terminos">
+        <li>Pagos por transferencia o depósito. Factura por cada pago, con sus datos fiscales.</li>
+        <li>Con más de 5 días hábiles de atraso se pausa el soporte; el sistema sigue funcionando.</li>
+        <li>Las 3 semanas cuentan desde el anticipo y desde que recibimos su información.</li>
+        <li>Incluye 2 rondas de ajustes. Lo nuevo se cotiza antes y solo se hace si lo aprueban.</li>
+        <li>No incluye facturar las cuotas ante el SAT, app en tiendas ni la computadora.</li>
+        <li>Al entregar borramos nuestras copias de su información. Guarden su respaldo cada semana en una USB.</li>
+        <li>El programa es de Vonoa Web; su copia y su información son suyas para siempre.</li>
+        <li>Si cancelan antes de que empecemos, se devuelve el 80% del anticipo.</li>
+      </ul>
+    </div>
+
+    <div class="firmas">
+      <div class="firma"><b>Acepto esta propuesta</b>Nombre, firma y fecha · Comité de Administración</div>
+      <div class="firma"><b>Vonoa Web</b>Guadalajara, Jalisco</div>
+    </div>
+
+    <p class="letra">Precios en pesos mexicanos, más IVA. Propuesta del 12 de octubre de 2026, vigente 30 días (hasta el 11 de noviembre de 2026).
+      Lo que no diga aquí se rige por los Términos y Condiciones y el Aviso de Privacidad de vonoaweb.com; donde esta propuesta diga algo distinto, manda la propuesta.
+      Se acepta firmándola o haciendo el primer pago. El comparativo usa los $1,500 al mes que hoy pagan y los precios de Vonoa Web sin IVA.</p>
+  </div>
+
+  <footer class="pie">
+    <span><b>Vonoa Web</b> · hola@vonoaweb.com · WhatsApp 56 4464 5574</span>
+    <span>vonoaweb.com</span>
+  </footer>
+</section>
+
+</body>
+</html>

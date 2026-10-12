@@ -104,8 +104,9 @@ CC.vistas.recibos = {
         '</div>' +
 
         '<div class="recibo__acciones noprint">' +
-        '<button class="btn btn--sm btn--ghost" data-imprimir="' + esc(r.id) + '">' +
-        CC.ui.icono('imprimir', 'i--sm') + ' Imprimir</button>' +
+        '<button class="btn btn--sm btn--soft" data-pdfrecibo="' + esc(r.id) + '">' +
+        CC.ui.icono('imprimir', 'i--sm') + ' Descargar PDF</button>' +
+        '<button class="btn btn--sm btn--ghost" data-imprimir="' + esc(r.id) + '">Imprimir</button>' +
         '<button class="btn btn--sm btn--ghost" data-delrecibo="' + esc(r.id) + '">Eliminar</button>' +
         '</div>' +
         '</article>';
@@ -117,6 +118,9 @@ CC.vistas.recibos = {
   montar: function (raiz) {
     pintarImagenes(raiz);
 
+    raiz.querySelectorAll('[data-pdfrecibo]').forEach(function (b) {
+      b.onclick = function () { CC.Comprobantes.descargar(CC.Comprobantes.reciboProveedor(b.getAttribute('data-pdfrecibo'))); };
+    });
     raiz.querySelectorAll('[data-imprimir]').forEach(function (b) {
       b.onclick = function () {
         CC.vistas.recibos.imprimirUno(b.getAttribute('data-imprimir'));
