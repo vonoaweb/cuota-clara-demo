@@ -129,10 +129,13 @@ CC.Store = (function () {
       var guardado = driver.leer();
       var usar = (guardado && guardado.version === 1) ? migrar(guardado) : null;
 
-      // Si lo guardado son datos de EJEMPLO de una version anterior, se vuelve a
-      // sembrar: el condominio de muestra cambio y quien abre el demo debe ver el
-      // actual. Lo que alguien capturo de verdad (demo === false) no se toca nunca.
-      if (usar && usar.meta && usar.meta.demo && usar.meta.semilla !== CC.Seed.SEMILLA) {
+      // Si lo guardado salió del condominio de EJEMPLO de una versión anterior, se
+      // vuelve a sembrar: quien abre el demo debe ver el actual, aunque haya
+      // jugado con él (registrar un pago de prueba no lo vuelve un condominio
+      // real). Un condominio real empieza vacío y no trae "semilla": ese nunca se
+      // toca. Por si acaso, la copia anterior se guarda aparte.
+      if (usar && usar.meta && usar.meta.semilla && usar.meta.semilla !== CC.Seed.SEMILLA) {
+        try { window.localStorage.setItem(LLAVE + '.anterior', JSON.stringify(usar)); } catch (e) { /* sin espacio */ }
         usar = null;
       }
 

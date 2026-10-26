@@ -36,6 +36,25 @@ CC.vistas.panel = {
         '</div>');
     }
 
+    /* --- Casa de prueba: el aviso llega a un WhatsApp de verdad --- */
+    var prueba = CC.Store.unidad('uni_prueba_151');
+    if (prueba && CC.Store.estado().meta.semilla) {
+      var sp = CC.Model.situacion(prueba.id, p);
+      var tel = CC.Comprobantes.telWa(prueba.telefono);
+      var texto = CC.Model.avisoAdeudo(prueba.id, p);
+      out.push('<div class="prueba">' +
+        '<div class="prueba__txt"><span class="prueba__eyebrow">Pruébalo en vivo</span>' +
+        '<strong>' + esc(prueba.clave) + ' · ' + esc(prueba.propietario) + '</strong>' +
+        '<span>Debe ' + esc(CC.fmt.money2(sp.saldo)) +
+        (sp.desde ? ' desde ' + esc(CC.fmt.periodo(sp.desde).toLowerCase()) : '') +
+        '. Manda el aviso y llega al WhatsApp <b class="num">' + esc(prueba.telefono) + '</b>.</span></div>' +
+        '<div class="prueba__acc">' +
+        (tel ? '<a class="btn" target="_blank" rel="noopener" data-avisoprueba="1" href="https://wa.me/' + esc(tel) +
+          '?text=' + encodeURIComponent(texto) + '">' + CC.ui.icono('wa', 'i--sm') + ' Enviar aviso por WhatsApp</a>' : '') +
+        '<a class="btn btn--ghost" href="#/unidad/' + esc(prueba.id) + '">Ver la casa</a>' +
+        '</div></div>');
+    }
+
     /* --- Lo que toca hacer hoy --- */
     var porAvisar = CC.Model.porAvisar(p);
     if (porAvisar.length) {
@@ -87,6 +106,10 @@ CC.vistas.panel = {
         '<div class="muted" style="font-size:11px">' + esc(x.unidad.inquilino || x.unidad.propietario) + '</div></td>' +
         '<td class="c">' + CC.ui.pill(s.estado) + '</td>' +
         '<td class="r strong">' + esc(CC.fmt.money2(s.saldo)) + '</td>' +
+        '<td class="r noprint">' + (CC.Comprobantes.telWa(x.unidad.telefono)
+          ? '<button class="btn btn--sm btn--soft" data-avisar="' + esc(x.unidad.id) + '" title="Avisar por WhatsApp">' +
+            CC.ui.icono('wa', 'i--sm') + '</button>'
+          : '') + '</td>' +
         '</tr>';
     }).join('');
 
@@ -96,11 +119,11 @@ CC.vistas.panel = {
       '<a class="btn btn--sm btn--soft" href="#/cobranza">Ver cobranza</a></div>' +
       (pendientes.length
         ? '<div class="tablewrap"><table class="ledger">' +
-          '<thead><tr><th>Casa</th><th class="c">Estado</th><th class="r">Saldo</th></tr></thead>' +
+          '<thead><tr><th>Casa</th><th class="c">Estado</th><th class="r">Saldo</th><th class="noprint"></th></tr></thead>' +
           '<tbody>' + filasPend + '</tbody>' +
           (pendientes.length > 6
             ? '<tfoot><tr><td colspan="2">y ' + (pendientes.length - 6) + ' casas más</td>' +
-              '<td class="r">' + esc(CC.fmt.money(pendientes.slice(6).reduce(function (a, x) { return a + x.situacion.saldo; }, 0))) + '</td></tr></tfoot>'
+              '<td class="r">' + esc(CC.fmt.money(pendientes.slice(6).reduce(function (a, x) { return a + x.situacion.saldo; }, 0))) + '</td><td></td></tr></tfoot>'
             : '') +
           '</table></div>'
         : '<div class="empty"><strong>Nadie debe nada</strong><p>Todas las casas están al corriente en este periodo.</p></div>') +
@@ -158,5 +181,23 @@ CC.vistas.panel = {
     }
 
     return out.join('');
+  },
+
+  montar: function (raiz, ctx) {
+    raiz.querySelectorAll('[data-avisar]').forEach(function (b) {
+      b.onclick = function () { CC.vistas.adeudos.avisarUna(b.getAttribute('data-avisar'), ctx.periodo); };
+    });
+    var a = raiz.querySelector('[data-avisoprueba]');
+    if (a) a.addEventListener('click', function () {
+      var s = CC.Model.situacion('uni_prueba_151', ctx.periodo);
+      // después del clic, para que el enlace alcance a abrir WhatsApp
+      setTimeout(function () {
+        CC.Store.registrarAvisoAdeudo({
+          unidadId: 'uni_prueba_151', canal: 'whatsapp',
+          saldo: Math.round(s.saldo * 100) / 100, meses: s.mesesVencidos
+        });
+        CC.ui.toast('Aviso anotado en el historial de la Casa 151', 'good');
+      }, 0);
+    });
   }
 };
