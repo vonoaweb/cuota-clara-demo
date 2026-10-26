@@ -48,7 +48,17 @@ CC.Seed = (function () {
      se le vuelve a sembrar con los datos nuevos en lugar de dejarle los viejos.
      Solo afecta a los datos de ejemplo: lo que alguien capturó de verdad
      (meta.demo === false) nunca se toca. */
-  var SEMILLA = 3;   // 1 = 18 departamentos · 2 = 150 casas · 3 = + convenios, avisos y caja chica
+  var SEMILLA = 4;   // 1 = 18 departamentos · 2 = 150 casas · 3 = + convenios, avisos y caja chica · 4 = + casa 151 de prueba
+
+  /* Casa de prueba con un teléfono real (pedido por Fernando, 26-oct-2026): debe
+     desde hace cuatro meses, así sale primero en Adeudos y en "Enviar avisos", y
+     el WhatsApp de prueba llega a ese número. Ojo: el demo es público. */
+  var CASA_PRUEBA = {
+    id: 'uni_prueba_151', clave: 'Casa 151', calle: 'Casa de prueba', numero: 151,
+    prototipo: 'C', m2: 180, cuotaOverride: null,
+    propietario: 'Vecino de Prueba', inquilino: null,
+    telefono: '+52 33 1144 1101', email: '', ocupacion: 'Propietario'
+  };
 
   var NOMBRES = [
     'María', 'José', 'Guadalupe', 'Juan', 'Alejandra', 'Ricardo', 'Verónica', 'Martín',
@@ -329,6 +339,7 @@ CC.Seed = (function () {
         });
       }
     });
+    unidades.push(Object.assign({}, CASA_PRUEBA));
 
     var totalM2 = unidades.reduce(function (a, u) { return a + u.m2; }, 0);
     unidades.forEach(function (u) {
@@ -353,6 +364,8 @@ CC.Seed = (function () {
       else if (r < 0.205) adeudos[u.clave] = 1;
       else if (r < 0.330) pendientesMes[u.clave] = 1;  // aún no paga el mes en curso
     });
+    adeudos[CASA_PRUEBA.clave] = 4;
+    delete pendientesMes[CASA_PRUEBA.clave];
 
     /* --- Cargos: la cuota de cada casa, cada periodo --- */
     var cargos = [];
@@ -376,6 +389,13 @@ CC.Seed = (function () {
           });
         });
       }
+    });
+
+    // A la casa de prueba se le suma una multa: así encabeza la lista de adeudos
+    cargos.push({
+      id: 'carm_prueba', unidadId: CASA_PRUEBA.id, periodo: periodos[1], tipo: 'multa',
+      concepto: 'Multa por ruido después de las 23:00 (reglamento interno)',
+      monto: 500, fechaVence: CC.per.vence(periodos[1], cond.diaVencimiento)
     });
 
     /* --- Pagos --- */
@@ -495,7 +515,8 @@ CC.Seed = (function () {
     ];
 
     /* --- Bitácora: notas sobre casas concretas --- */
-    var morosos = Object.keys(adeudos);
+    // la casa de prueba queda fuera de notas, convenios y avisos ya enviados
+    var morosos = Object.keys(adeudos).filter(function (k) { return k !== CASA_PRUEBA.clave; });
     var notas = [];
     function casaPorClave(clave) {
       for (var i = 0; i < unidades.length; i++) if (unidades[i].clave === clave) return unidades[i];
