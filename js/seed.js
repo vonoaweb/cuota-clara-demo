@@ -56,15 +56,11 @@ CC.Seed = (function () {
      (meta.demo === false) nunca se toca. */
   var SEMILLA = P.semilla || 5;   // … 4 = + casa 151 de prueba · 5 = banco y caja chica, egresos con folio
 
-  /* Casa de prueba con un teléfono real (pedido por Fernando, 26-oct-2026): debe
-     desde hace cuatro meses, así sale primero en Adeudos y en "Enviar avisos", y
-     el WhatsApp de prueba llega a ese número. Ojo: el demo es público. */
-  var CASA_PRUEBA = P.casaPrueba !== undefined ? P.casaPrueba : {
-    id: 'uni_prueba_151', clave: 'Prueba 151', calle: 'Casa de prueba', numero: 151,
-    prototipo: 'C', m2: 180, cuotaOverride: null,
-    propietario: 'Vecino de Prueba', inquilino: null,
-    telefono: '+52 33 1144 1101', email: '', ocupacion: 'Propietario'
-  };
+  /* Casa de prueba (opcional, la trae el perfil): debe desde hace cuatro meses, así
+     sale primero en Adeudos y en "Enviar avisos", y el Panel muestra "Pruébalo en
+     vivo" para mandarle el aviso a su WhatsApp. Por omisión no hay ninguna: los
+     demos son públicos y no deben llevar teléfonos reales (Fernando, 27-oct-2026). */
+  var CASA_PRUEBA = P.casaPrueba || null;
   if (CASA_PRUEBA) CASA_PRUEBA.prueba = true;
 
   var NOMBRES = [

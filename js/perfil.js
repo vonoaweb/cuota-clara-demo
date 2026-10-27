@@ -10,7 +10,8 @@
  * Mallorca NO aparta canchas ni áreas (Fernando, 27-oct: "no me pidieron reservar
  * la cancha, es otro proyecto"); las reservas son de Villas Cádiz. Por eso aquí no
  * hay amenidades y no aparecen Reservas ni "Áreas que se apartan" (reservas: false).
- * Son 105 casas; la Casa 107 es una de más, para probar los avisos.
+ * Son 105 casas. Sin casa de prueba: el demo se enseña a otras personas y no debe
+ * llevar ningún teléfono real (Fernando, 27-oct).
  *
  * Los vecinos, las referencias, el saldo del banco y los importes de los gastos
  * son de ejemplo: se cambian por los reales al cargar su información.
@@ -18,7 +19,7 @@
 window.CC = window.CC || {};
 CC.Perfil = {
   id: 'mallorca',
-  semilla: 'mallorca-3',
+  semilla: 'mallorca-4',
 
   condominio: {
     nombre: 'Condominio Mallorca Naciones Unidas',
@@ -73,14 +74,7 @@ CC.Perfil = {
     [[21], 'Tornillos y copias', 'Papelería y copias', 186, 'Papelería', '']
   ],
 
-  /* La Casa 107 no existe: es de más, para que los avisos de prueba lleguen al
-     WhatsApp de Fernando. Se quita poniendo casaPrueba: null. */
-  casaPrueba: {
-    id: 'uni_casa_107', numero: 107, clave: '107', calle: 'Mallorca',
-    prototipo: 'Casa', m2: 180, cuotaOverride: 1500,
-    propietario: 'Vecino de Prueba', inquilino: null,
-    telefono: '+52 33 1144 1101', email: '', ocupacion: 'Propietario'
-  },
+  casaPrueba: null,               // sin la tarjeta "Pruébalo en vivo" ni teléfonos reales
 
   reservas: false,                // sin sección Reservas ni "Áreas que se apartan"
 
