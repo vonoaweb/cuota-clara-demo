@@ -442,6 +442,9 @@ CC.Comprobantes = (function () {
 
   function telWa(telefono) {
     var d = String(telefono || '').replace(/\D/g, '');
+    // En el demo para enseñar, el WhatsApp le llega a quien lo prueba (js/demo.js);
+    // si aún no da su número, el enlace lleva un 0 y se le pide al tocarlo
+    if (d && CC.Demo && CC.Demo.activo()) return CC.Demo.numero() || '0';
     return d.length === 10 ? '52' + d : d;
   }
 
@@ -456,8 +459,9 @@ CC.Comprobantes = (function () {
       var tactil = window.matchMedia && window.matchMedia('(pointer:coarse)').matches;
       function respaldo() {
         r.doc.descargar(r.nombre);
-        var t = telWa(telefono);
-        if (t) window.open('https://wa.me/' + t + '?text=' + encodeURIComponent(texto), '_blank', 'noopener');
+        var enlace = 'https://wa.me/' + telWa(telefono) + '?text=' + encodeURIComponent(texto);
+        if (CC.Demo && CC.Demo.activo()) CC.Demo.conNumero(function (n) { CC.Demo.abrir(enlace, n); });
+        else if (telWa(telefono)) window.open(enlace, '_blank', 'noopener');
         CC.ui.toast('PDF descargado. Adjúntalo en el chat que se abrió.', 'good');
       }
       if (tactil && navigator.canShare && navigator.canShare({ files: [archivo] })) {

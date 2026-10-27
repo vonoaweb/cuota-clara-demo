@@ -55,6 +55,8 @@ CC.Seed = (function () {
      Solo afecta a los datos de ejemplo: lo que alguien capturó de verdad
      (meta.demo === false) nunca se toca. */
   var SEMILLA = P.semilla || 5;   // … 4 = + casa 151 de prueba · 5 = banco y caja chica, egresos con folio
+  // Los correos inventados de los vecinos; el demo para enseñar usa example.com, que no es de nadie
+  var DOMINIO_CORREO = P.dominioCorreo || 'correo.mx';
 
   /* Casa de prueba (opcional, la trae el perfil): debe desde hace cuatro meses, así
      sale primero en Adeudos y en "Enviar avisos", y el Panel muestra "Pruébalo en
@@ -367,9 +369,9 @@ CC.Seed = (function () {
           propietario: propietario,
           inquilino: inquilino,
           telefono: sinTel ? '' : tel(),
-          email: sinMail ? '' : sinAcentos(nombre) + '.' + sinAcentos(ap1) + (ci * 30 + n) + '@correo.mx',
+          email: sinMail ? '' : sinAcentos(nombre) + '.' + sinAcentos(ap1) + (ci * 30 + n) + '@' + DOMINIO_CORREO,
           telInquilino: inquilino ? tel() : '',
-          emailInquilino: inquilino ? sinAcentos(inquilino.split(' ')[0]) + '.' + sinAcentos(inquilino.split(' ').pop()) + corrido + '@correo.mx' : '',
+          emailInquilino: inquilino ? sinAcentos(inquilino.split(' ')[0]) + '.' + sinAcentos(inquilino.split(' ').pop()) + corrido + '@' + DOMINIO_CORREO : '',
           referencia: String(100000 + corrido * 7 + 3),
           ocupacion: rentada ? 'Rentada' : (desocupada ? 'Desocupada' : 'Propietario')
         });

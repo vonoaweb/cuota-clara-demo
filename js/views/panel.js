@@ -2,6 +2,18 @@
 window.CC = window.CC || {};
 CC.vistas = CC.vistas || {};
 
+/** La casa de "Pruébalo en vivo": la de prueba del perfil o, en el demo para
+    enseñar, la que más debe (su aviso le llega a quien prueba, ver js/demo.js). */
+function casaDeMuestra(periodo) {
+  var prueba = CC.Store.unidades().filter(function (u) { return u.prueba; })[0];
+  if (prueba) return CC.Store.estado().meta.semilla ? prueba : null;
+  if (!(CC.Demo && CC.Demo.activo()) || !CC.Store.estado().meta.semilla) return null;
+  var mayor = CC.Model.padron(periodo)
+    .filter(function (x) { return x.situacion.saldo > 0.005; })
+    .sort(function (a, b) { return b.situacion.saldo - a.situacion.saldo; })[0];
+  return mayor ? mayor.unidad : null;
+}
+
 CC.vistas.panel = {
   titulo: 'Panel',
   sub: function (ctx) {
@@ -36,20 +48,26 @@ CC.vistas.panel = {
     }
 
     /* --- Casa de prueba: el aviso llega a un WhatsApp de verdad --- */
-    var prueba = CC.Store.unidades().filter(function (u) { return u.prueba; })[0];
-    if (prueba && CC.Store.estado().meta.semilla) {
+    var prueba = casaDeMuestra(p);
+    if (prueba) {
       var sp = CC.Model.situacion(prueba.id, p);
-      var tel = CC.Comprobantes.telWa(prueba.telefono);
+      var demo = CC.Demo && CC.Demo.activo(), miNum = demo && CC.Demo.numero();
+      var tel = demo ? (miNum || '0') : CC.Comprobantes.telWa(prueba.telefono);
       var texto = CC.Model.avisoAdeudo(prueba.id, p);
       out.push('<div class="prueba">' +
         '<div class="prueba__txt"><span class="prueba__eyebrow">Pruébalo en vivo</span>' +
-        '<strong>Casa ' + esc(prueba.clave) + ' · ' + esc(prueba.propietario) + '</strong>' +
+        '<strong>Casa ' + esc(prueba.clave) + ' · ' + esc(prueba.inquilino || prueba.propietario) + '</strong>' +
         '<span>Debe ' + esc(CC.fmt.money2(sp.saldo)) +
         (sp.desde ? ' desde ' + esc(CC.fmt.periodo(sp.desde).toLowerCase()) : '') +
-        '. Manda el aviso y llega al WhatsApp <b class="num">' + esc(prueba.telefono) + '</b>.</span></div>' +
+        (demo
+          ? '. Manda el aviso y te llega a tu WhatsApp<span data-demotiene' + (miNum ? '' : ' hidden') + '> (<b class="num" data-demonum>' +
+            esc(miNum ? CC.Demo.formato(miNum) : '') + '</b> · <button type="button" class="linkbtn" data-demonumero="1">cambiar</button>)</span>.'
+          : '. Manda el aviso y llega al WhatsApp <b class="num">' + esc(prueba.telefono) + '</b>.') +
+        '</span></div>' +
         '<div class="prueba__acc">' +
         (tel ? '<a class="btn" target="_blank" rel="noopener" data-avisoprueba="1" href="https://wa.me/' + esc(tel) +
-          '?text=' + encodeURIComponent(texto) + '">' + CC.ui.icono('wa', 'i--sm') + ' Enviar aviso por WhatsApp</a>' : '') +
+          '?text=' + encodeURIComponent(texto) + '">' + CC.ui.icono('wa', 'i--sm') +
+          (demo ? ' Enviar el aviso a mi WhatsApp' : ' Enviar aviso por WhatsApp') + '</a>' : '') +
         '<a class="btn btn--ghost" href="#/unidad/' + esc(prueba.id) + '">Ver la casa</a>' +
         '</div></div>');
     }
@@ -225,7 +243,7 @@ CC.vistas.panel = {
       b.onclick = function () { CC.vistas.adeudos.avisarUna(b.getAttribute('data-avisar'), ctx.periodo); };
     });
     var a = raiz.querySelector('[data-avisoprueba]');
-    var prueba = CC.Store.unidades().filter(function (u) { return u.prueba; })[0];
+    var prueba = casaDeMuestra(ctx.periodo);
     if (a && prueba) a.addEventListener('click', function () {
       var s = CC.Model.situacion(prueba.id, ctx.periodo);
       // después del clic, para que el enlace alcance a abrir WhatsApp
