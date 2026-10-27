@@ -71,6 +71,49 @@ CC.ui = (function () {
       });
   }
 
+  /** Pide un texto corto (un motivo, una nota) en la ventana de la app. */
+  function pedirTexto(titulo, texto, etiquetaOk, alAceptar) {
+    modal(titulo,
+      '<p style="font-size:13.5px;color:var(--ink-2);line-height:1.6">' + esc(texto) + '</p>' +
+      '<input class="input" id="uiTexto" style="margin-top:12px" autocomplete="off">' +
+      '<div class="formactions">' +
+      '<button type="button" class="btn btn--ghost" data-cancel="1">Regresar</button>' +
+      '<button type="button" class="btn btn--crit" data-ok="1">' + esc(etiquetaOk) + '</button>' +
+      '</div>',
+      function (cuerpo) {
+        cuerpo.querySelector('[data-cancel]').onclick = cerrarModal;
+        cuerpo.querySelector('[data-ok]').onclick = function () {
+          var v = cuerpo.querySelector('#uiTexto').value.trim();
+          if (!v) { toast('Escribe el motivo', 'crit'); return; }
+          cerrarModal();
+          alAceptar(v);
+        };
+      });
+  }
+
+  /**
+   * Baja una tabla como archivo .csv que Excel abre directo. Lleva BOM para que
+   * los acentos se vean bien.
+   */
+  function descargarCSV(nombre, encabezados, filas) {
+    function celda(v) {
+      if (typeof v === 'number') return String(Math.round(v * 100) / 100);
+      var t = String(v === null || v === undefined ? '' : v);
+      return /[",\n;]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+    }
+    var csv = [encabezados].concat(filas).map(function (f) { return f.map(celda).join(','); }).join('\r\n');
+    var blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = String(nombre).replace(/[\\/:*?"<>|]+/g, ' ').trim() + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+    toast('Descargado para Excel: ' + a.download, 'good');
+  }
+
   /* ---------- Portapapeles ---------- */
   function copiar(texto, mensaje) {
     function aviso(ok) { toast(ok ? (mensaje || 'Copiado') : 'No se pudo copiar', ok ? 'good' : 'crit'); }
@@ -222,6 +265,7 @@ CC.ui = (function () {
   return {
     esc: esc, h: h, icono: icono,
     toast: toast, modal: modal, cerrarModal: cerrarModal, confirmar: confirmar, copiar: copiar,
+    pedirTexto: pedirTexto, descargarCSV: descargarCSV,
     pill: pill, pillLibre: pillLibre, stats: stats, barras: barras,
     graficaSerie: graficaSerie, leyendaSerie: leyendaSerie,
     leerTema: leerTema, aplicarTema: aplicarTema, ciclarTema: ciclarTema

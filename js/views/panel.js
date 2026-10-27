@@ -11,7 +11,7 @@ CC.vistas.panel = {
   acciones: function () {
     return [
       { texto: 'Registrar pago', icono: 'mas', clase: 'btn', accion: 'pago' },
-      { texto: 'Registrar gasto', icono: 'gastos', clase: 'btn btn--ghost', accion: 'gasto' }
+      { texto: 'Registrar egreso', icono: 'gastos', clase: 'btn btn--ghost', accion: 'gasto' }
     ];
   },
 
@@ -29,22 +29,21 @@ CC.vistas.panel = {
     if (CC.Store.esDemo()) {
       out.push(
         '<div class="note note--demo">' +
-        '<div><strong>Estos son datos de ejemplo.</strong> Un condominio ficticio de ' +
-        CC.Store.unidades().length + ' casas, ' +
-        'para que veas la aplicación trabajando. En cuanto captures tu primer dato real desaparece este aviso, ' +
+        '<div><strong>Estos son datos de ejemplo.</strong> ' + CC.Store.unidades().length +
+        ' casas con vecinos e importes inventados, para que veas la aplicación trabajando. En cuanto captures tu primer dato real desaparece este aviso, ' +
         'o puedes vaciarlo todo desde <a href="#/ajustes">Ajustes</a>.</div>' +
         '</div>');
     }
 
     /* --- Casa de prueba: el aviso llega a un WhatsApp de verdad --- */
-    var prueba = CC.Store.unidad('uni_prueba_151');
+    var prueba = CC.Store.unidades().filter(function (u) { return u.prueba; })[0];
     if (prueba && CC.Store.estado().meta.semilla) {
       var sp = CC.Model.situacion(prueba.id, p);
       var tel = CC.Comprobantes.telWa(prueba.telefono);
       var texto = CC.Model.avisoAdeudo(prueba.id, p);
       out.push('<div class="prueba">' +
         '<div class="prueba__txt"><span class="prueba__eyebrow">Pruébalo en vivo</span>' +
-        '<strong>' + esc(prueba.clave) + ' · ' + esc(prueba.propietario) + '</strong>' +
+        '<strong>Casa ' + esc(prueba.clave) + ' · ' + esc(prueba.propietario) + '</strong>' +
         '<span>Debe ' + esc(CC.fmt.money2(sp.saldo)) +
         (sp.desde ? ' desde ' + esc(CC.fmt.periodo(sp.desde).toLowerCase()) : '') +
         '. Manda el aviso y llega al WhatsApp <b class="num">' + esc(prueba.telefono) + '</b>.</span></div>' +
@@ -68,10 +67,11 @@ CC.vistas.panel = {
     /* --- Cifras del mes --- */
     out.push(CC.ui.stats([
       {
-        lab: 'Saldo en caja',
+        lab: 'Banco y caja chica',
         val: CC.fmt.money(caja),
         tono: caja < 0 ? 'crit' : null,
-        nota: '<span>De ese saldo, ' + esc(CC.fmt.money(fondo)) + ' es fondo de reserva</span>'
+        nota: '<span>Banco ' + esc(CC.fmt.money(CC.Model.saldoCuenta('banco'))) + ' · caja chica ' +
+          esc(CC.fmt.money(CC.Model.saldoCuenta('caja'))) + '</span>'
       },
       {
         lab: 'Cobrado del mes',
@@ -133,7 +133,7 @@ CC.vistas.panel = {
     var egresos =
       '<div class="panelbox">' +
       '<div class="panelbox__head"><h3>En qué se fue el dinero</h3>' +
-      '<a class="btn btn--sm btn--soft" href="#/gastos">Ver gastos</a></div>' +
+      '<a class="btn btn--sm btn--soft" href="#/gastos">Ver egresos</a></div>' +
       '<div class="panelbox__body">' +
       (cats.length
         ? CC.ui.barras(cats.slice(0, 7).map(function (c) {
@@ -154,6 +154,43 @@ CC.vistas.panel = {
       '</div></div>';
 
     out.push('<div class="split">' + cobranza + egresos + '</div>');
+
+    /* --- Caseta: quién entró hoy y quién viene --- */
+    if (CC.Store.condominio().registroVisitas) {
+      var hoyV = CC.per.hoyISO();
+      var entraron = CC.Model.visitasDel(hoyV).filter(function (v) { return v.estado !== 'esperada'; }).length;
+      var dentroV = CC.Model.visitasDentro();
+      var esperadasV = CC.Model.visitasEsperadas().filter(function (v) { return v.fecha === hoyV; });
+      out.push('<div class="panelbox">' +
+        '<div class="panelbox__head"><h3>En la caseta hoy</h3>' +
+        '<a class="btn btn--sm btn--soft" href="#/visitas">Ver visitas</a></div>' +
+        '<div class="panelbox__body" style="display:flex;flex-wrap:wrap;gap:8px 22px;font-size:13px">' +
+        '<span><b class="num">' + entraron + '</b> entradas</span>' +
+        '<span><b class="num">' + dentroV.length + '</b> dentro ahora</span>' +
+        '<span><b class="num">' + esperadasV.length + '</b> avisadas por los vecinos</span>' +
+        '</div></div>');
+    }
+
+    /* --- Canchas: lo apartado hoy --- */
+    var areas = CC.Store.amenidades();
+    if (areas.length) {
+      var hoyISO = CC.per.hoyISO();
+      var deHoy = CC.Model.reservasDel(hoyISO);
+      var totalHoras = areas.reduce(function (t, a) { return t + CC.Model.horasDe(a).length; }, 0);
+      out.push('<div class="panelbox">' +
+        '<div class="panelbox__head"><h3>Hoy en ' + esc(areas.length > 1 ? 'las áreas comunes' : areas[0].nombre.toLowerCase()) + '</h3>' +
+        '<a class="btn btn--sm btn--soft" href="#/reservas">Apartar</a></div>' +
+        (deHoy.length
+          ? '<ul class="reslista">' + deHoy.slice(0, 6).map(function (r) {
+              var u = CC.Store.unidad(r.unidadId) || {}, a = CC.Store.amenidad(r.amenidadId) || {};
+              return '<li><span><b class="mono">' + esc(r.hora) + '</b> · ' + esc(a.nombre) + '</span>' +
+                '<span>Casa ' + esc(u.clave) + '</span></li>';
+            }).join('') + '</ul>' +
+            '<p class="muted" style="font-size:11.5px;padding:8px 16px 12px">' + deHoy.length + ' de ' + totalHoras +
+            ' horas apartadas' + (deHoy.length > 6 ? ' · y ' + (deHoy.length - 6) + ' más' : '') + '</p>'
+          : '<div class="empty"><strong>Las canchas están libres hoy</strong><p>Apártalas desde Reservas.</p></div>') +
+        '</div>');
+    }
 
     /* --- Historial de 6 meses --- */
     var serie = CC.Model.serie(p, 6);
@@ -188,15 +225,16 @@ CC.vistas.panel = {
       b.onclick = function () { CC.vistas.adeudos.avisarUna(b.getAttribute('data-avisar'), ctx.periodo); };
     });
     var a = raiz.querySelector('[data-avisoprueba]');
-    if (a) a.addEventListener('click', function () {
-      var s = CC.Model.situacion('uni_prueba_151', ctx.periodo);
+    var prueba = CC.Store.unidades().filter(function (u) { return u.prueba; })[0];
+    if (a && prueba) a.addEventListener('click', function () {
+      var s = CC.Model.situacion(prueba.id, ctx.periodo);
       // después del clic, para que el enlace alcance a abrir WhatsApp
       setTimeout(function () {
         CC.Store.registrarAvisoAdeudo({
-          unidadId: 'uni_prueba_151', canal: 'whatsapp',
+          unidadId: prueba.id, canal: 'whatsapp',
           saldo: Math.round(s.saldo * 100) / 100, meses: s.mesesVencidos
         });
-        CC.ui.toast('Aviso anotado en el historial de la Casa 151', 'good');
+        CC.ui.toast('Aviso anotado en el historial de la casa ' + prueba.clave, 'good');
       }, 0);
     });
   }

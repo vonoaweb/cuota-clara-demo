@@ -89,6 +89,12 @@
       }
     }
 
+    // Reservas solo aparece si el condominio tiene áreas que se apartan
+    var hayAreas = CC.Store.amenidades().length > 0;
+    document.querySelectorAll('[data-route="reservas"]').forEach(function (a) { a.hidden = !hayAreas; });
+    var hayVisitas = !!CC.Store.condominio().registroVisitas;
+    document.querySelectorAll('[data-route="visitas"]').forEach(function (a) { a.hidden = !hayVisitas; });
+
     marcarNavegacion();
     actualizarBadge();
     llenarPeriodos();
@@ -113,7 +119,7 @@
   /* En el celular la barra de abajo tiene cinco lugares; el resto va en "Más". */
   function menuMas() {
     var html = '<nav class="mas">' + Array.prototype.map.call(
-      document.querySelectorAll('.nav__list .nav__item, .nav__portal'),
+      document.querySelectorAll('.nav__list .nav__item:not([hidden]), .nav__portal'),
       function (a) {
         var ruta = a.getAttribute('data-route');
         var icono = a.querySelector('use').getAttribute('href').replace('#i-', '');
@@ -164,6 +170,8 @@
     window.addEventListener('hashchange', alCambiarHash);
 
     // Cuando cambian los datos, se redibuja la vista actual
+    // Los recargos se ponen al día solos con cada cambio (un pago registrado tarde, por ejemplo)
+    CC.Store.alCambiar(function () { CC.Model.aplicarRecargos(); });
     CC.Store.alCambiar(function () { dibujar(); });
   }
 
@@ -171,6 +179,7 @@
   function iniciar() {
     CC.ui.aplicarTema(CC.ui.leerTema());
     CC.Store.iniciar();
+    CC.Model.aplicarRecargos();
     ruta = leerHash();
     conectar();
     dibujar();

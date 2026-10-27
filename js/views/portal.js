@@ -66,7 +66,9 @@ CC.vistas.portal = {
       '<h3>Hola ' + esc(quien || 'vecino') + ', casa ' + esc(u.clave) + '</h3>' +
       '<p class="muted" style="font-size:12.5px;margin-top:6px">' +
       (alCorriente
-        ? 'Tu cuenta está al corriente. Gracias por pagar a tiempo.'
+        ? (CC.Model.pagadoHasta(u.id) && CC.Model.pagadoHasta(u.id) > p
+          ? 'Tienes pagado por adelantado hasta ' + esc(CC.fmt.periodo(CC.Model.pagadoHasta(u.id)).toLowerCase()) + '. ¡Gracias!'
+          : 'Tu cuenta está al corriente. Gracias por pagar a tiempo.')
         : 'Tienes un saldo pendiente' + (s.mesesVencidos > 0
           ? ' de ' + s.mesesVencidos + (s.mesesVencidos === 1 ? ' mes' : ' meses') + ', desde ' + esc(CC.fmt.periodo(s.desde)) + '.'
           : '.')) +
@@ -86,6 +88,56 @@ CC.vistas.portal = {
           ' de recargo por mora (' + esc(cond.tasaMoraMensual) + '% mensual sobre el saldo vencido).</p></div>'
         : '') +
       '</div>');
+
+    /* --- Anualidad: lo que cuesta pagar el año por adelantado --- */
+    var gratis = Number(cond.mesesGratisAnualidad) || 0;
+    if (gratis) {
+      out.push('<div class="note"><div><strong>Paga el año y llévate ' + gratis + (gratis === 1 ? ' mes' : ' meses') + ' gratis:</strong> ' +
+        '12 cuotas por ' + esc(CC.fmt.money2(cuota * (12 - gratis))) + ' en lugar de ' + esc(CC.fmt.money2(cuota * 12)) + '.' +
+        (cond.cuenta ? ' Transferencia a ' + esc(cond.cuenta) + '.' : '') + '</div></div>');
+    }
+
+    /* --- Recibos: cada pago con su nota, para bajarlo cuando quiera --- */
+    var misPagos = CC.Store.pagos().filter(function (x) { return x.unidadId === u.id; })
+      .sort(function (a, b) { return a.fecha < b.fecha ? 1 : -1; }).slice(0, 6);
+    out.push('<div class="panelbox"><div class="panelbox__head"><h3>Tus recibos</h3>' +
+      '<span class="eyebrow">' + misPagos.length + ' pagos recientes</span></div>' +
+      (misPagos.length ? '<ul class="reslista">' + misPagos.map(function (x) {
+        return '<li><span><b class="num">' + esc(CC.fmt.money2(x.monto)) + '</b> · ' + esc(CC.fmt.fecha(x.fecha)) +
+          ' · folio ' + esc(CC.Comprobantes.folio('P-', x.folio)) +
+          (x.nota ? '<br><small class="muted">' + esc(x.nota) + '</small>' : '') + '</span>' +
+          '<button class="btn btn--sm btn--ghost" data-recportal="' + esc(x.id) + '">' + CC.ui.icono('imprimir', 'i--sm') + ' Recibo</button></li>';
+      }).join('') + '</ul>' : '<div class="empty"><strong>Todavía no hay pagos registrados</strong></div>') + '</div>');
+
+    /* --- Visitas: avisar a la caseta quién viene --- */
+    if (cond.registroVisitas) {
+      var misVisitas = CC.Model.visitasEsperadas().filter(function (v) { return v.unidadId === u.id; });
+      out.push('<div class="panelbox"><div class="panelbox__head"><h3>Tus visitas</h3>' +
+        '<button class="btn btn--sm" id="btnVisitaPortal">' + CC.ui.icono('visitas', 'i--sm') + ' Avisar que viene alguien</button></div>' +
+        (misVisitas.length ? '<ul class="reslista">' + misVisitas.map(function (v) {
+          return '<li><span><b>' + esc(v.nombre) + '</b> · ' + esc(v.tipo) + '</span><span class="muted">' +
+            esc(v.fecha === CC.per.hoyISO() ? 'Hoy' : CC.fmt.fecha(v.fecha)) + (v.horaAprox ? ' · ' + esc(v.horaAprox) : '') + '</span></li>';
+        }).join('') + '</ul>'
+          : '<div class="empty"><strong>No hay visitas avisadas</strong><p>Avisa quién viene y el guardia lo deja pasar sin llamarte.</p></div>') +
+        '</div>');
+    }
+
+    /* --- Canchas: lo que tiene apartado y botón para apartar --- */
+    if (CC.Store.amenidades().length) {
+      var prox = CC.Model.proximasReservas(u.id);
+      out.push('<div class="panelbox">' +
+        '<div class="panelbox__head"><h3>Tus reservas</h3>' +
+        '<button class="btn btn--sm" id="btnApartarPortal">' + CC.ui.icono('reservas', 'i--sm') + ' Apartar cancha</button></div>' +
+        (prox.length
+          ? '<ul class="reslista">' + prox.slice(0, 5).map(function (r) {
+              var a = CC.Store.amenidad(r.amenidadId) || {};
+              return '<li><span><b>' + esc(CC.vistas.reservas.nombreDia(r.fecha, true)) + '</b> · ' +
+                esc(r.hora) + '–' + esc(CC.vistas.reservas.finDe(r)) + '</span><span>' + esc(a.nombre) + '</span></li>';
+            }).join('') + '</ul>'
+          : '<div class="empty"><strong>No tienes canchas apartadas</strong><p>Aparta tu hora con hasta ' +
+            esc(CC.Store.amenidades()[0].anticipacionDias || 7) + ' días de anticipación.</p></div>') +
+        '</div>');
+    }
 
     /* --- Avisos del condominio --- */
     var avisos = CC.Store.avisos().slice(0, 3);
@@ -169,8 +221,7 @@ CC.vistas.portal = {
         (cond.telefono ? ' · ' + esc(cond.telefono) : '') +
         (cond.email ? ' · ' + esc(cond.email) : '') + '</p></div>' +
         '<p class="muted" style="font-size:11.5px">La cuota vence el día ' + esc(cond.diaVencimiento) +
-        ' de cada mes. Después de esa fecha se genera un recargo de ' + esc(cond.tasaMoraMensual) +
-        '% mensual sobre el saldo vencido.</p>' +
+        ' de cada mes; ' + esc(CC.Model.textoRecargo()) + '.</p>' +
         '</div></div>');
     }
 
@@ -178,6 +229,15 @@ CC.vistas.portal = {
   },
 
   montar: function (raiz, ctx, redibujar) {
+    raiz.querySelectorAll('[data-recportal]').forEach(function (b) {
+      b.onclick = function () { CC.Comprobantes.descargar(CC.Comprobantes.reciboPago(b.getAttribute('data-recportal'))); };
+    });
+    var vis = raiz.querySelector('#btnVisitaPortal');
+    if (vis) vis.onclick = function () { CC.vistas.visitas.avisar(unidadPortal); };
+    var apartar = raiz.querySelector('#btnApartarPortal');
+    if (apartar) apartar.onclick = function () {
+      CC.vistas.reservas.formulario({ unidadId: unidadPortal, fijaCasa: true });
+    };
     var sel = raiz.querySelector('#selPortal');
     if (sel) {
       sel.onchange = function () {

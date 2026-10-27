@@ -74,7 +74,12 @@ CC.vistas.cobranza = {
       var delMes = cargosPorUnidad[u.id] || 0;
       var pagado = pagadoPorUnidad[u.id] || 0;
       var clase = s.estado === 'moroso' ? 'row--crit' : s.estado === 'vencido' ? 'row--warn' : '';
-      var cubierto = delMes > 0 && pagado >= delMes - 0.005;
+      // el mes cuenta como pagado si sus cargos quedaron cubiertos, aunque el
+      // dinero haya entrado otro mes (anualidad, pago adelantado)
+      var pendMes = s.lineas.filter(function (l) { return l.cargo.periodo === p; })
+        .reduce(function (a, l) { return a + l.pendiente; }, 0);
+      var cubierto = delMes > 0 && pendMes <= 0.005;
+      var adelantado = cubierto && pagado < 0.005;
 
       return '<tr class="' + clase + '">' +
         '<td><a href="#/unidad/' + esc(u.id) + '" class="strong">' + esc(u.clave) + '</a>' +
@@ -83,8 +88,8 @@ CC.vistas.cobranza = {
         '<td class="r" style="color:' + (pagado > 0 ? 'var(--good)' : 'var(--muted)') + '">' +
         (pagado ? esc(CC.fmt.money2(pagado)) : '—') + '</td>' +
         '<td class="c">' + (cubierto
-          ? '<span class="pill pill--good">Pagado</span>'
-          : pagado > 0 ? '<span class="pill pill--warn">Parcial</span>'
+          ? '<span class="pill pill--good">' + (adelantado ? 'Adelantado' : 'Pagado') + '</span>'
+          : pendMes < delMes - 0.005 ? '<span class="pill pill--warn">Parcial</span>'
             : '<span class="pill pill--mute">Pendiente</span>') + '</td>' +
         '<td class="r ' + (s.saldo > 0.005 ? 'strong' : 'muted') + '">' + esc(CC.fmt.money2(Math.max(0, s.saldo))) + '</td>' +
         '<td class="c">' + CC.ui.pill(s.estado) + '</td>' +
@@ -118,7 +123,7 @@ CC.vistas.cobranza = {
       '<span class="eyebrow">' + recibidos.length + ' movimientos</span></div>' +
       (recibidos.length
         ? '<div class="tablewrap"><table class="ledger">' +
-          '<thead><tr><th>Folio</th><th>Fecha</th><th>Casa</th><th>Método</th><th>Referencia</th>' +
+          '<thead><tr><th>Folio</th><th>Fecha</th><th>Casa</th><th>Forma</th><th>Referencia</th>' +
           '<th class="r">Monto</th><th class="noprint"></th></tr></thead><tbody>' +
           recibidos.map(function (x) {
             var u = CC.Store.unidad(x.unidadId);
@@ -127,7 +132,8 @@ CC.vistas.cobranza = {
               '<td class="mono" style="font-size:12px">' + esc(CC.fmt.fechaCorta(x.fecha)) + '</td>' +
               '<td class="strong">' + esc(u ? u.clave : '—') +
               (x.convenioId ? ' <span class="pill pill--flat pill--mute">convenio</span>' : '') + '</td>' +
-              '<td>' + esc(x.metodo || '—') + '</td>' +
+              '<td><div class="cellstack"><span>' + esc(x.metodo || '—') + '</span><small>' +
+              esc(x.cuenta === 'caja' ? 'Caja chica' : 'Banco') + '</small></div></td>' +
               '<td class="mono" style="font-size:12px;color:var(--muted)">' + esc(x.referencia || '—') + '</td>' +
               '<td class="r strong">' + esc(CC.fmt.money2(x.monto)) + '</td>' +
               '<td class="r noprint" style="white-space:nowrap">' +
@@ -217,7 +223,7 @@ CC.vistas.cobranza = {
 
   formularioPago: function (unidadId, periodo) {
     var esc = CC.ui.esc;
-    var unidades = CC.Store.unidades().slice().sort(function (a, b) { return a.clave < b.clave ? -1 : 1; });
+    var unidades = CC.Store.unidades().slice().sort(CC.Model.ordenCasas);
     if (!unidades.length) { CC.ui.toast('Primero captura al menos una casa', 'crit'); return; }
 
     var elegida = unidadId || unidades[0].id;
@@ -241,6 +247,12 @@ CC.vistas.cobranza = {
       '<input class="input num" id="pMonto" type="number" min="0" step="0.01" value="' + esc(sugerido(elegida)) + '">' +
       '<span class="field__hint" id="pHint"></span></label>' +
 
+      '<label class="field"><span class="field__lab">Qué paga</span>' +
+      '<select class="input" id="pQue"><option value="0">Lo que debe o la cuota del mes</option>' +
+      '<option value="3">Adelantar 3 meses</option><option value="6">Adelantar 6 meses</option>' +
+      '<option value="12">Anualidad: 12 meses' + (Number(CC.Store.condominio().mesesGratisAnualidad)
+        ? ' (' + CC.Store.condominio().mesesGratisAnualidad + ' gratis)' : '') + '</option></select></label>' +
+
       '<label class="field"><span class="field__lab">Fecha del pago</span>' +
       '<input class="input" id="pFecha" type="date" value="' + esc(CC.per.hoyISO()) + '"></label>' +
 
@@ -249,15 +261,22 @@ CC.vistas.cobranza = {
         return '<option value="' + esc(x) + '"' + (x === periodo ? ' selected' : '') + '>' + esc(CC.fmt.periodo(x)) + '</option>';
       }).join('') + '</select></label>' +
 
-      '<label class="field"><span class="field__lab">Método</span>' +
+      '<label class="field"><span class="field__lab">Forma de pago</span>' +
       '<select class="input" id="pMetodo">' +
-      ['Transferencia', 'Depósito', 'Efectivo', 'Cheque', 'Domiciliación'].map(function (m) {
+      ['Transferencia', 'Depósito', 'Efectivo', 'Cheque', 'Domiciliación', 'Otra (terminal, CoDi)'].map(function (m) {
         return '<option>' + m + '</option>';
       }).join('') + '</select></label>' +
+
+      '<label class="field"><span class="field__lab">Entra a</span>' +
+      '<select class="input" id="pCuenta">' + CC.Store.cuentas().map(function (c) {
+        return '<option value="' + esc(c.id) + '">' + esc(c.nombre) + '</option>';
+      }).join('') + '</select><span class="field__hint">El efectivo va a la caja chica</span></label>' +
 
       '<label class="field"><span class="field__lab">Referencia</span>' +
       '<input class="input mono" id="pRef" placeholder="Folio o últimos dígitos"></label>' +
       '</div>' +
+
+      '<div class="mesespago" id="pMeses"></div>' +
 
       '<label class="check" id="pCvWrap" hidden><input type="checkbox" id="pCv" checked> ' +
       '<span id="pCvTxt"></span></label>' +
@@ -295,25 +314,83 @@ CC.vistas.cobranza = {
         pista();
         if (cvActual && cvActual.siguiente) inMonto.value = cvActual.siguiente.monto.toFixed(2);
 
+        /* Pagos por adelantado: las cuotas de los meses que vienen se crean al registrar */
+        var selQue = cuerpo.querySelector('#pQue');
+        var adelanto = [];
+        function calcularAdelanto() {
+          var n = Number(selQue.value) || 0;
+          if (!n) { adelanto = []; pista(); return; }
+          var gratis = n === 12 ? (Number(CC.Store.condominio().mesesGratisAnualidad) || 0) : 0;
+          adelanto = CC.Model.proyectarAdelanto(selU.value, n, gratis);
+          var s = CC.Model.situacion(selU.value, periodo);
+          var total = adelanto.reduce(function (a, c) { return a + c.monto; }, 0) + Math.max(0, s.saldo);
+          inMonto.value = total.toFixed(2);
+          hint.textContent = 'Cubre de ' + CC.fmt.periodoCorto(adelanto[0].periodo) + ' a ' +
+            CC.fmt.periodoCorto(adelanto[adelanto.length - 1].periodo) +
+            (gratis ? ' · ' + gratis + (gratis === 1 ? ' mes gratis' : ' meses gratis') : '') +
+            (s.saldo > 0.005 ? ' · incluye lo que debe (' + CC.fmt.money2(s.saldo) + ')' : '');
+        }
+        selQue.onchange = function () { calcularAdelanto(); pintarMeses(); };
+
+        /* Los meses que debe, para marcar cuáles paga: la suma va al monto */
+        var cajaMeses = cuerpo.querySelector('#pMeses');
+        function pintarMeses() {
+          var meses = Number(selQue.value) ? [] : CC.Model.pendientesPorMes(selU.value, '9999-12');
+          if (!meses.length) { cajaMeses.innerHTML = ''; return; }
+          cajaMeses.innerHTML = '<span class="field__lab">Meses que paga</span>' +
+            '<div class="mesespago__lista">' + meses.map(function (m, i) {
+              return '<label class="mesespago__mes"><input type="checkbox" data-mes="' + i + '" data-monto="' + m.total.toFixed(2) + '" checked>' +
+                '<span>' + esc(CC.fmt.periodo(m.periodo)) + '</span><b class="num">' + esc(CC.fmt.money2(m.total)) + '</b>' +
+                (m.partes.length > 1 ? '<small>' + esc(m.partes.map(function (x) { return x.etiqueta; }).join(' + ')) + '</small>' : '') +
+                '</label>';
+            }).join('') + '</div><span class="field__hint" id="pMesesHint"></span>';
+          cajaMeses.querySelectorAll('[data-mes]').forEach(function (cb) { cb.onchange = sumarMeses; });
+        }
+        function sumarMeses() {
+          var cbs = Array.prototype.slice.call(cajaMeses.querySelectorAll('[data-mes]'));
+          var total = cbs.reduce(function (a, cb) { return a + (cb.checked ? Number(cb.getAttribute('data-monto')) : 0); }, 0);
+          inMonto.value = total.toFixed(2);
+          // El pago se aplica a lo más viejo: si dejan un mes viejo sin marcar, se avisa
+          var saltado = false, visto = false;
+          cbs.forEach(function (cb) { if (cb.checked) visto = true; else if (!visto) saltado = true; });
+          var conAlgo = cbs.some(function (cb) { return cb.checked; });
+          cajaMeses.querySelector('#pMesesHint').textContent = saltado && conAlgo
+            ? 'Ojo: el pago se aplica primero al mes más viejo que debe, aunque no lo marques.' : '';
+        }
+        pintarMeses();
+
+        /* El efectivo entra a la caja chica; lo demás, al banco */
+        var selMetodo = cuerpo.querySelector('#pMetodo'), selCuenta = cuerpo.querySelector('#pCuenta');
+        selMetodo.onchange = function () { selCuenta.value = selMetodo.value === 'Efectivo' ? 'caja' : 'banco'; };
+
         selU.onchange = function () {
           inMonto.value = sugerido(selU.value);
           pista();
           if (cvActual && cvActual.siguiente) inMonto.value = cvActual.siguiente.monto.toFixed(2);
+          if (Number(selQue.value)) calcularAdelanto();
+          pintarMeses();
         };
         cuerpo.querySelector('#pCancel').onclick = CC.ui.cerrarModal;
 
         cuerpo.querySelector('#pOk').onclick = function () {
           var monto = Number(inMonto.value);
           if (!(monto > 0)) { CC.ui.toast('Captura un monto mayor a cero', 'crit'); return; }
+          if (adelanto.length) CC.Store.agregarCargos(adelanto.map(function (c) { return Object.assign({}, c); }));
+          var nAd = Number(selQue.value) || 0;
+          var notaAd = nAd && adelanto.length
+            ? (nAd === 12 ? 'Anualidad ' : 'Pago adelantado ') + CC.fmt.periodoCorto(adelanto[0].periodo) + ' – ' +
+              CC.fmt.periodoCorto(adelanto[adelanto.length - 1].periodo)
+            : '';
           var pago = CC.Store.agregarPago({
             unidadId: selU.value,
             monto: monto,
             fecha: cuerpo.querySelector('#pFecha').value || CC.per.hoyISO(),
             periodo: cuerpo.querySelector('#pPeriodo').value,
             metodo: cuerpo.querySelector('#pMetodo').value,
+            cuenta: selCuenta.value,
             referencia: cuerpo.querySelector('#pRef').value.trim(),
             convenioId: cvActual && cvCheck.checked ? cvActual.convenio.id : null,
-            nota: cuerpo.querySelector('#pNota').value.trim()
+            nota: cuerpo.querySelector('#pNota').value.trim() || notaAd
           });
           CC.vistas.cobranza.pagoListo(pago.id);
         };

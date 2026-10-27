@@ -48,6 +48,13 @@ function formularioUnidad(unidad) {
     '<input class="input" id="fTel" value="' + esc(u.telefono || '') + '" placeholder="33 1234 5678"></label>' +
     '<label class="field"><span class="field__lab">Correo</span>' +
     '<input class="input" id="fMail" type="email" value="' + esc(u.email || '') + '"></label>' +
+    '<label class="field"><span class="field__lab">Teléfono del arrendatario</span>' +
+    '<input class="input" id="fTelInq" value="' + esc(u.telInquilino || '') + '"></label>' +
+    '<label class="field"><span class="field__lab">Correo del arrendatario</span>' +
+    '<input class="input" id="fMailInq" type="email" value="' + esc(u.emailInquilino || '') + '"></label>' +
+    '<label class="field"><span class="field__lab">Referencia bancaria</span>' +
+    '<input class="input mono" id="fRef" value="' + esc(u.referencia || '') + '" placeholder="Con la que paga en el banco">' +
+    '<span class="field__hint">Sirve para reconocer sus depósitos</span></label>' +
     '<label class="field"><span class="field__lab">Ocupación</span>' +
     '<select class="input" id="fOcup">' +
     ['Propietario', 'Rentada', 'Desocupada'].map(function (o) {
@@ -89,6 +96,9 @@ function formularioUnidad(unidad) {
           inquilino: cuerpo.querySelector('#fInq').value.trim() || null,
           telefono: cuerpo.querySelector('#fTel').value.trim(),
           email: cuerpo.querySelector('#fMail').value.trim(),
+          telInquilino: cuerpo.querySelector('#fTelInq').value.trim(),
+          emailInquilino: cuerpo.querySelector('#fMailInq').value.trim(),
+          referencia: cuerpo.querySelector('#fRef').value.trim(),
           ocupacion: cuerpo.querySelector('#fOcup').value
         };
         if (unidad) { CC.Store.actualizarUnidad(u.id, datos); CC.ui.toast('Casa actualizada', 'good'); }
@@ -137,7 +147,8 @@ CC.vistas.unidades = {
       ['todas', 'Todas', pad.length],
       ['corriente', 'Al corriente', pad.filter(function (x) { return x.situacion.estado === 'corriente'; }).length],
       ['vencido', 'Vencidas', pad.filter(function (x) { return x.situacion.estado === 'vencido'; }).length],
-      ['moroso', 'Morosas', pad.filter(function (x) { return x.situacion.estado === 'moroso'; }).length]
+      ['moroso', 'Morosas', pad.filter(function (x) { return x.situacion.estado === 'moroso'; }).length],
+      ['sindatos', 'Sin teléfono o correo', pad.filter(function (x) { return !x.unidad.telefono || !x.unidad.email; }).length]
     ].map(function (c) {
       return '<button class="chip' + (f.estado === c[0] ? ' is-on' : '') + '" data-festado="' + c[0] + '">' +
         esc(c[1]) + ' <em class="chip__n">' + c[2] + '</em></button>';
@@ -153,7 +164,8 @@ CC.vistas.unidades = {
 
     /* --- Filtrado --- */
     var visibles = pad.filter(function (x) {
-      if (f.estado !== 'todas' && x.situacion.estado !== f.estado) return false;
+      if (f.estado === 'sindatos') { if (x.unidad.telefono && x.unidad.email) return false; }
+      else if (f.estado !== 'todas' && x.situacion.estado !== f.estado) return false;
       if (f.calle !== 'todas' && (x.unidad.calle || 'Sin calle') !== f.calle) return false;
       if (f.texto) {
         var t = f.texto.toLowerCase();
@@ -298,7 +310,7 @@ CC.vistas.unidad = {
       lista.push({ texto: CC.Model.convenioDe(ctx.param) ? 'Convenio' : 'Hacer convenio', icono: 'recibos', clase: 'btn btn--ghost', accion: 'convenio' });
     }
     lista.push({ texto: 'Anotar', icono: 'avisos', clase: 'btn btn--ghost', accion: 'nota' });
-    lista.push({ texto: 'Imprimir', icono: 'imprimir', clase: 'btn btn--ghost', accion: 'imprimir' });
+    lista.push({ texto: 'Estado de cuenta PDF', icono: 'imprimir', clase: 'btn btn--ghost', accion: 'estadoCuenta' });
     lista.push({ texto: 'Editar', icono: 'ajustes', clase: 'btn btn--ghost', accion: 'editar' });
     return lista;
   },
@@ -320,13 +332,16 @@ CC.vistas.unidad = {
     var movs = [];
     CC.Store.cargos().filter(function (c) { return c.unidadId === u.id && c.periodo <= ctx.periodo; })
       .forEach(function (c) {
-        movs.push({ fecha: c.fechaVence || (c.periodo + '-01'), concepto: c.concepto, cargo: c.monto, abono: 0 });
+        movs.push({
+          fecha: c.fechaVence || (c.periodo + '-01'), cargo: c.monto, abono: 0, cargoId: c.id,
+          concepto: c.concepto + (c.condonado ? ' (condonado)' : c.manual ? ' (corregido)' : '')
+        });
       });
     CC.Store.pagos().filter(function (p) { return p.unidadId === u.id && p.periodo <= ctx.periodo; })
       .forEach(function (p) {
         movs.push({
           fecha: p.fecha,
-          concepto: 'Pago recibido — ' + (p.metodo || 'sin método') + (p.referencia ? ' · ref. ' + p.referencia : ''),
+          concepto: 'Pago recibido P-' + String(p.folio || 0).padStart(4, '0') + ' — ' + (p.metodo || 'sin método') + (p.referencia ? ' · ref. ' + p.referencia : ''),
           cargo: 0, abono: p.monto, id: p.id
         });
       });
@@ -337,8 +352,8 @@ CC.vistas.unidad = {
       corriente += m.cargo - m.abono;
       return '<tr>' +
         '<td class="mono" style="font-size:12px;white-space:nowrap">' + esc(CC.fmt.fechaCorta(m.fecha)) + '</td>' +
-        '<td>' + esc(m.concepto) + '</td>' +
-        '<td class="r">' + (m.cargo ? esc(CC.fmt.money2(m.cargo)) : '') + '</td>' +
+        '<td>' + esc(m.concepto) + (m.cargoId ? ' <button class="linkbtn noprint" data-corcargo="' + esc(m.cargoId) + '">corregir</button>' : '') + '</td>' +
+        '<td class="r">' + (m.cargo || m.cargoId ? esc(CC.fmt.money2(m.cargo)) : '') + '</td>' +
         '<td class="r" style="color:var(--good)">' + (m.abono ? esc(CC.fmt.money2(m.abono)) : '') + '</td>' +
         '<td class="r strong">' + esc(CC.fmt.money2(corriente)) + '</td>' +
         '</tr>';
@@ -380,7 +395,9 @@ CC.vistas.unidad = {
       {
         lab: 'Saldo', val: CC.fmt.money2(Math.abs(s.saldo)),
         tono: s.saldo > 0.005 ? 'crit' : 'good',
-        nota: '<span>' + (s.saldo > 0.005 ? 'por cobrar' : s.saldo < -0.005 ? 'a favor del residente' : 'sin adeudo') + '</span>'
+        nota: '<span>' + (s.saldo > 0.005 ? 'por cobrar'
+          : s.saldo < -0.005 ? 'a favor' + (CC.Model.pagadoHasta(u.id) ? ' · pagado hasta ' + esc(CC.fmt.periodoCorto(CC.Model.pagadoHasta(u.id))) : '')
+          : 'sin adeudo') + '</span>'
       },
       {
         lab: 'Meses vencidos', val: String(s.mesesVencidos),
@@ -499,10 +516,25 @@ CC.vistas.unidad = {
 
     return '<p class="noprint"><a href="#/unidades" class="btn btn--sm btn--ghost">' +
       CC.ui.icono('volver', 'i--sm') + ' Padrón de casas</a></p>' +
-      cifras + bloqueConvenio + cabecera + bitacora;
+      cifras + bloqueConvenio + cabecera + bitacora + bloqueVisitas(u);
+
+    /* Las últimas visitas de la casa, si el condominio lleva el registro */
+    function bloqueVisitas(casa) {
+      if (!cond.registroVisitas) return '';
+      var l = CC.Model.visitasDe(casa.id).slice(0, 6);
+      return '<div class="panelbox"><div class="panelbox__head"><h3>Visitas de la casa</h3>' +
+        '<a class="btn btn--sm btn--soft" href="#/visitas">Registro de visitas</a></div>' +
+        (l.length ? '<ul class="reslista">' + l.map(function (v) {
+          return '<li><span><b>' + esc(v.nombre) + '</b> · ' + esc(v.tipo) + '</span><span class="muted mono" style="font-size:12px">' +
+            esc(v.estado === 'esperada' ? 'esperada ' + CC.fmt.fecha(v.fecha) : CC.fmt.fecha(v.fecha) + ' ' + (v.entrada || '')) + '</span></li>';
+        }).join('') + '</ul>' : '<div class="empty"><strong>Sin visitas registradas</strong></div>') + '</div>';
+    }
   },
 
   montar: function (raiz) {
+    raiz.querySelectorAll('[data-corcargo]').forEach(function (b) {
+      b.onclick = function () { CC.vistas.unidad.corregirCargo(b.getAttribute('data-corcargo')); };
+    });
     raiz.querySelectorAll('[data-recpago]').forEach(function (b) {
       b.onclick = function () { CC.Comprobantes.descargar(CC.Comprobantes.reciboPago(b.getAttribute('data-recpago'))); };
     });
@@ -565,6 +597,81 @@ CC.vistas.unidad = {
   pagoUnidad: function (ctx) { CC.vistas.cobranza.formularioPago(ctx.param, ctx.periodo); },
   editar: function (ctx) { formularioUnidad(CC.Store.unidad(ctx.param)); },
   imprimir: function () { window.print(); },
+
+  /** Corregir un cargo: un recargo de más, un monto mal capturado. Queda constancia. */
+  corregirCargo: function (cargoId) {
+    var esc = CC.ui.esc;
+    var c = CC.Store.cargo(cargoId);
+    if (!c) return;
+    var esRecargo = c.tipo === 'recargo';
+    CC.ui.modal('Corregir cargo',
+      '<p class="field__hint" style="margin-bottom:12px">' + esc(c.concepto) + ' · ' + esc(CC.fmt.periodo(c.periodo)) + '</p>' +
+      '<div class="formgrid">' +
+      '<label class="field"><span class="field__lab">Concepto</span><input class="input" id="kConcepto" value="' + esc(c.concepto) + '"></label>' +
+      '<label class="field"><span class="field__lab">Monto</span><input class="input num" id="kMonto" type="number" min="0" step="0.01" value="' + esc(c.monto) + '"></label>' +
+      '</div>' +
+      (esRecargo && c.auto ? '<p class="field__hint" style="margin-top:10px">Este recargo lo pone el sistema. Si lo corriges o lo condonas, ya no lo vuelve a calcular.</p>' : '') +
+      ((c.historial || []).length ? '<details class="historial"><summary>' + c.historial.length + ' cambios</summary><ul>' +
+        c.historial.map(function (h) {
+          return '<li><span class="mono">' + esc(CC.fmt.fecha(h.fecha)) + '</span> antes: ' +
+            esc(Object.keys(h.antes).map(function (k) { return k + ' = ' + h.antes[k]; }).join(' · ')) + '</li>';
+        }).join('') + '</ul></details>' : '') +
+      '<div class="formactions">' +
+      '<button type="button" class="btn btn--ghost" id="kCondonar" style="margin-right:auto">Condonar</button>' +
+      '<button type="button" class="btn btn--ghost" id="kCerrar">Cerrar</button>' +
+      '<button type="button" class="btn" id="kOk">Guardar</button></div>',
+      function (cuerpo) {
+        var q = function (id) { return cuerpo.querySelector('#' + id); };
+        q('kCerrar').onclick = CC.ui.cerrarModal;
+        q('kCondonar').onclick = function () {
+          CC.ui.pedirTexto('Condonar cargo', 'El cargo queda en $0 y a la vista, con el motivo. ¿Por qué se condona?', 'Condonar', function (motivo) {
+            CC.Store.condonarCargo(c.id, motivo);
+            CC.ui.toast('Cargo condonado', 'good');
+          });
+        };
+        q('kOk').onclick = function () {
+          var monto = Number(q('kMonto').value);
+          if (!(monto >= 0)) { CC.ui.toast('Revisa el monto', 'crit'); return; }
+          CC.Store.editarCargo(c.id, { concepto: q('kConcepto').value.trim() || c.concepto, monto: monto });
+          CC.ui.cerrarModal();
+          CC.ui.toast('Cargo corregido; el cambio queda anotado', 'good');
+        };
+      });
+  },
+
+  /** Estado de cuenta en PDF de tal mes a tal mes, para bajarlo o mandarlo al vecino. */
+  estadoCuenta: function (ctx) {
+    var esc = CC.ui.esc;
+    var u = CC.Store.unidad(ctx.param);
+    if (!u) return;
+    var meses = CC.Model.periodos().slice().sort();
+    var hasta = ctx.periodo, desde = meses[0] || ctx.periodo;
+    var opciones = function (sel) {
+      return meses.map(function (p) { return '<option value="' + p + '"' + (p === sel ? ' selected' : '') + '>' + esc(CC.fmt.periodo(p)) + '</option>'; }).join('');
+    };
+    CC.ui.modal('Estado de cuenta — casa ' + u.clave,
+      '<div class="formgrid">' +
+      '<label class="field"><span class="field__lab">Desde</span><select class="input" id="ecDesde">' + opciones(desde) + '</select></label>' +
+      '<label class="field"><span class="field__lab">Hasta</span><select class="input" id="ecHasta">' + opciones(hasta) + '</select></label>' +
+      '</div>' +
+      '<div class="formactions">' +
+      '<button type="button" class="btn btn--ghost" id="ecCerrar">Cerrar</button>' +
+      (u.telefono ? '<button type="button" class="btn btn--ghost" id="ecWa">' + CC.ui.icono('wa', 'i--sm') + ' Mandar por WhatsApp</button>' : '') +
+      '<button type="button" class="btn" id="ecPdf">' + CC.ui.icono('imprimir', 'i--sm') + ' Descargar PDF</button></div>',
+      function (cuerpo) {
+        var q = function (id) { return cuerpo.querySelector('#' + id); };
+        var rango = function () {
+          var a = q('ecDesde').value, b = q('ecHasta').value;
+          return a <= b ? [a, b] : [b, a];
+        };
+        q('ecCerrar').onclick = CC.ui.cerrarModal;
+        q('ecPdf').onclick = function () { var r = rango(); CC.Comprobantes.descargar(CC.Comprobantes.estadoCuenta(u.id, r[0], r[1])); };
+        if (q('ecWa')) q('ecWa').onclick = function () {
+          var r = rango();
+          CC.Comprobantes.compartir(CC.Comprobantes.estadoCuenta(u.id, r[0], r[1]), CC.Comprobantes.textoEstadoCuenta(u.id, r[0], r[1]), u.telefono);
+        };
+      });
+  },
 
   /** Aviso de adeudo por WhatsApp o correo, con el saldo real de la casa. */
   recordatorio: function (ctx) { CC.vistas.adeudos.avisarUna(ctx.param, ctx.periodo); },

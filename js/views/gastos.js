@@ -1,245 +1,378 @@
-/* views/gastos.js — los servicios del condominio: cuanto cuesta cada uno,
-   quién lo presta, que ya se pagó y que sigue pendiente. */
+/* views/gastos.js — los egresos: todo lo que sale, del banco o de la caja chica.
+ *
+ * Lo que pidió la administración de Mallorca (26-oct-2026): folio automático,
+ * forma de pago, de qué cuenta sale, quién recibe el dinero, la categoría y, en
+ * la misma captura, el recibo firmado ("a la hora que hago el recibo lo estoy
+ * capturando"). Se puede corregir —queda lo que decía antes— y se cancela en vez
+ * de borrarse, para que no falte ningún folio.
+ */
 window.CC = window.CC || {};
 CC.vistas = CC.vistas || {};
 
+var filtroEgresos = { cuenta: 'todas' };
+var GRUPOS_CAT = { fijo: 'Gastos fijos', variable: 'Gastos variables', otro: 'Otros gastos' };
+var FORMAS_PAGO = ['Efectivo', 'Transferencia', 'Cheque', 'Tarjeta', 'Domiciliación', 'Otra (terminal, CoDi)'];
+
+function folioEgreso(g) { return 'E-' + String(g.folioE || 0).padStart(4, '0'); }
+function nombreCuenta(id) { var c = CC.Store.cuenta(id || 'banco'); return c ? c.nombre : 'Banco'; }
+
+/** Opciones de categoría agrupadas en fijos, variables y otros. */
+function opcionesCategoria(elegida) {
+  var esc = CC.ui.esc;
+  var cats = CC.Store.categorias();
+  return Object.keys(GRUPOS_CAT).map(function (g) {
+    var del = cats.filter(function (c) { return (c.grupo || 'variable') === g; });
+    if (!del.length) return '';
+    return '<optgroup label="' + esc(GRUPOS_CAT[g]) + '">' + del.map(function (c) {
+      return '<option value="' + esc(c.nombre) + '"' + (c.nombre === elegida ? ' selected' : '') + '>' + esc(c.nombre) + '</option>';
+    }).join('') + '</optgroup>';
+  }).join('') + '<option value="__nueva">+ Nueva categoría…</option>';
+}
+
+/**
+ * Captura o corrección de un egreso. Con "recibo", pide la firma de quien recibe
+ * y descarga el recibo en PDF al guardar.
+ */
+function formularioEgreso(gasto, opciones) {
+  opciones = opciones || {};
+  var esc = CC.ui.esc;
+  var g = gasto || {};
+  var nuevo = !gasto;
+  var siguiente = 'E-' + String((CC.Store.estado().meta.folioEgreso || 0) + 1).padStart(4, '0');
+  var conRecibo = nuevo ? !!opciones.recibo : !!g.recibo;
+  var proveedores = CC.Store.proveedores().concat(CC.Store.categorias().map(function (c) { return c.proveedor; }))
+    .filter(function (x, i, a) { return x && a.indexOf(x) === i; }).sort();
+
+  CC.ui.modal(nuevo ? 'Registrar egreso — folio ' + siguiente + ' (automático)' : 'Corregir egreso ' + folioEgreso(g),
+    '<div class="formgrid">' +
+    '<label class="field"><span class="field__lab">Concepto</span>' +
+    '<input class="input" id="eConcepto" value="' + esc(g.concepto || '') + '" placeholder="Pago de vigilancia de octubre"></label>' +
+    '<label class="field"><span class="field__lab">Categoría</span>' +
+    '<select class="input" id="eCat">' + opcionesCategoria(g.categoria || (CC.Store.categorias()[0] || {}).nombre) + '</select></label>' +
+    '<div class="field" id="eNuevaCat" hidden><span class="field__lab">Nueva categoría</span>' +
+    '<div class="fila2"><input class="input" id="eCatNombre" placeholder="Nombre">' +
+    '<select class="input" id="eCatGrupo"><option value="fijo">Fijo</option><option value="variable" selected>Variable</option><option value="otro">Otro</option></select></div></div>' +
+    '<label class="field"><span class="field__lab">Quién recibe el dinero</span>' +
+    '<input class="input" id="eProv" list="listaProv" value="' + esc(g.proveedor || '') + '" placeholder="Proveedor o persona" autocomplete="off">' +
+    '<datalist id="listaProv">' + proveedores.map(function (x) { return '<option value="' + esc(x) + '">'; }).join('') + '</datalist>' +
+    '<span class="field__hint">Si es nuevo, se da de alta solo</span></label>' +
+    '<label class="field"><span class="field__lab">Monto</span>' +
+    '<input class="input num" id="eMonto" type="number" min="0" step="0.01" value="' + esc(g.monto || '') + '" placeholder="0.00"></label>' +
+    '<label class="field"><span class="field__lab">Fecha</span>' +
+    '<input class="input" id="eFecha" type="date" value="' + esc(g.fecha || CC.per.hoyISO()) + '"></label>' +
+    '<label class="field"><span class="field__lab">Forma de pago</span>' +
+    '<select class="input" id="eForma">' + FORMAS_PAGO.map(function (f) {
+      return '<option' + ((g.metodo || (conRecibo ? 'Efectivo' : 'Transferencia')) === f ? ' selected' : '') + '>' + f + '</option>';
+    }).join('') + '</select></label>' +
+    '<label class="field"><span class="field__lab">Sale de</span>' +
+    '<select class="input" id="eCuenta">' + CC.Store.cuentas().map(function (c) {
+      var actual = g.cuenta || (conRecibo ? 'caja' : 'banco');
+      return '<option value="' + esc(c.id) + '"' + (c.id === actual ? ' selected' : '') + '>' + esc(c.nombre) + '</option>';
+    }).join('') + '</select></label>' +
+    '<label class="field"><span class="field__lab">Referencia</span>' +
+    '<input class="input mono" id="eRef" value="' + esc(g.referencia || g.folio || '') + '" placeholder="Cheque, transferencia o factura"></label>' +
+    '<label class="field"><span class="field__lab">Estado</span>' +
+    '<select class="input" id="eEstado"><option value="pagado">Ya se pagó</option>' +
+    '<option value="pendiente"' + (g.estado === 'pendiente' ? ' selected' : '') + '>Pendiente de pago</option></select></label>' +
+    '</div>' +
+    '<label class="field" style="margin-top:14px"><span class="field__lab">Nota (opcional)</span>' +
+    '<input class="input" id="eNota" value="' + esc(g.nota || '') + '" placeholder="Autorizado por el comité, fuera de contrato…"></label>' +
+
+    '<label class="check check--suave"><input type="checkbox" id="eRecibo"' + (conRecibo ? ' checked' : '') + '> ' +
+    'Hacer el recibo firmado por quien recibe el dinero</label>' +
+    '<div id="eReciboCaja"' + (conRecibo ? '' : ' hidden') + '>' +
+    '<div class="capturas">' +
+    '<div class="captura"><div class="captura__head"><span class="field__lab">Firma de quien recibe' +
+    (g.firmaId || g.firmaInline ? ' (ya firmó; firma de nuevo solo si hace falta)' : '') + '</span>' +
+    '<button type="button" class="btn btn--sm btn--ghost" id="eLimpiar">Borrar</button></div>' +
+    '<canvas id="eFirma" class="lienzo"></canvas>' +
+    '<span class="field__hint">Con el dedo en el celular o con el mouse</span></div>' +
+    '<div class="captura"><div class="captura__head"><span class="field__lab">Foto (opcional)</span></div>' +
+    '<label class="dropfoto" for="eFoto" id="eFotoEtiqueta">' + CC.ui.icono('imprimir') +
+    '<span>Tomar foto o elegir del carrete</span><small>La nota, el ticket o el trabajo hecho</small></label>' +
+    '<input type="file" id="eFoto" accept="image/*" capture="environment" hidden><div id="eFotoPrev"></div></div>' +
+    '</div>' +
+    '<label class="field" style="margin-top:12px"><span class="field__lab">Identificación (opcional)</span>' +
+    '<input class="input mono" id="eIne" value="' + esc(g.identificacion || '') + '" placeholder="INE, gafete o teléfono"></label>' +
+    '</div>' +
+
+    (!nuevo && (g.historial || []).length
+      ? '<details class="historial"><summary>' + g.historial.length + (g.historial.length === 1 ? ' corrección' : ' correcciones') + '</summary><ul>' +
+        g.historial.map(function (h) {
+          return '<li><span class="mono">' + esc(CC.fmt.fecha(h.fecha)) + '</span> antes decía: ' +
+            esc(Object.keys(h.antes).map(function (k) { return k + ' = ' + (h.antes[k] === undefined ? '—' : h.antes[k]); }).join(' · ')) + '</li>';
+        }).join('') + '</ul></details>'
+      : '') +
+
+    '<div class="formactions">' +
+    (!nuevo && g.estado !== 'cancelado' ? '<button type="button" class="btn btn--ghost" id="eCancelarEgreso" style="margin-right:auto">Cancelar este egreso</button>' : '') +
+    '<button type="button" class="btn btn--ghost" id="eCerrar">Cerrar</button>' +
+    '<button type="button" class="btn" id="eOk">' + (nuevo ? 'Guardar' : 'Guardar cambios') + '</button>' +
+    '</div>',
+
+    function (cuerpo) {
+      var q = function (id) { return cuerpo.querySelector('#' + id); };
+      var firma = CC.Firma(q('eFirma'));
+      q('eLimpiar').onclick = function () { firma.limpiar(); };
+
+      var selCat = q('eCat');
+      selCat.onchange = function () { q('eNuevaCat').hidden = selCat.value !== '__nueva'; if (selCat.value === '__nueva') q('eCatNombre').focus(); };
+      q('eForma').onchange = function () { q('eCuenta').value = q('eForma').value === 'Efectivo' ? 'caja' : 'banco'; };
+      q('eRecibo').onchange = function () {
+        q('eReciboCaja').hidden = !q('eRecibo').checked;
+        if (q('eRecibo').checked) { q('eForma').value = 'Efectivo'; q('eCuenta').value = 'caja'; }
+        q('eOk').textContent = (nuevo ? 'Guardar' : 'Guardar cambios') + (q('eRecibo').checked ? ' y descargar recibo' : '');
+      };
+      q('eRecibo').onchange();
+
+      var fotoDataURL = null;
+      q('eFoto').onchange = function () {
+        var f = q('eFoto').files && q('eFoto').files[0];
+        if (!f) return;
+        CC.Archivos.comprimir(f, 1000, 0.65).then(function (d) {
+          fotoDataURL = d;
+          q('eFotoPrev').innerHTML = '<img src="' + d + '" alt="Vista previa" style="max-width:100%;border-radius:6px;display:block">';
+          q('eFotoEtiqueta').hidden = true;
+        }, function (err) { CC.ui.toast(err.message || 'No se pudo leer la imagen', 'crit'); });
+      };
+
+      q('eCerrar').onclick = CC.ui.cerrarModal;
+      var bCanc = q('eCancelarEgreso');
+      if (bCanc) bCanc.onclick = function () {
+        CC.ui.pedirTexto('Cancelar egreso ' + folioEgreso(g),
+          'El egreso deja de contar, pero su folio sigue a la vista con el motivo. ¿Por qué se cancela?',
+          'Cancelar egreso', function (motivo) {
+            CC.Store.cancelarGasto(g.id, motivo);
+            CC.ui.toast('Egreso ' + folioEgreso(g) + ' cancelado; su folio sigue a la vista');
+          });
+      };
+
+      q('eOk').onclick = function () {
+        var categoria = selCat.value;
+        if (categoria === '__nueva') {
+          var nc = CC.Store.agregarCategoria(q('eCatNombre').value, q('eCatGrupo').value);
+          if (!nc) { CC.ui.toast('Ponle nombre a la categoría nueva', 'crit'); return; }
+          categoria = nc.nombre;
+        }
+        var concepto = q('eConcepto').value.trim();
+        var monto = Number(q('eMonto').value);
+        var fecha = q('eFecha').value || CC.per.hoyISO();
+        var cuenta = q('eCuenta').value, estadoE = q('eEstado').value;
+        var recibo = q('eRecibo').checked;
+        if (!concepto) { CC.ui.toast('Falta el concepto', 'crit'); return; }
+        if (!(monto > 0)) { CC.ui.toast('Captura un monto mayor a cero', 'crit'); return; }
+        if (recibo && !q('eProv').value.trim()) { CC.ui.toast('Para el recibo hace falta el nombre de quien recibe', 'crit'); return; }
+        if (cuenta === 'caja' && estadoE === 'pagado') {
+          var disponible = CC.Model.saldoCuenta('caja') + (!nuevo && g.cuenta === 'caja' && g.estado === 'pagado' ? Number(g.monto) : 0);
+          if (monto > disponible + 0.005) {
+            CC.ui.toast('En la caja chica solo hay ' + CC.fmt.money2(disponible) + '. Haz un traspaso del banco o cámbialo a Banco.', 'crit');
+            return;
+          }
+        }
+        var boton = q('eOk');
+        boton.disabled = true;
+        var firmaPNG = recibo ? firma.aPNG() : null;
+        Promise.all([
+          firmaPNG ? CC.Archivos.guardar(firmaPNG, 'firma') : Promise.resolve(null),
+          fotoDataURL ? CC.Archivos.guardar(fotoDataURL, 'foto') : Promise.resolve(null)
+        ]).then(function (ids) {
+          var datos = {
+            periodo: CC.per.de(fecha), fecha: fecha, categoria: categoria, concepto: concepto,
+            proveedor: q('eProv').value.trim(), monto: monto, metodo: q('eForma').value, cuenta: cuenta,
+            referencia: q('eRef').value.trim(), estado: estadoE, nota: q('eNota').value.trim(),
+            recibo: recibo, identificacion: recibo ? q('eIne').value.trim() : (g.identificacion || '')
+          };
+          if (estadoE === 'pagado' && g.estado !== 'pagado') datos.fechaPago = nuevo ? fecha : CC.per.hoyISO();
+          if (ids[0]) { datos.firmaId = ids[0]; datos.firmaInline = null; }
+          else if (firmaPNG) datos.firmaInline = firmaPNG;    // el navegador no deja guardar imágenes aparte
+          if (ids[1]) datos.fotoId = ids[1];
+          var res = nuevo ? CC.Store.agregarGasto(datos) : CC.Store.editarGasto(g.id, datos);
+          CC.ui.cerrarModal();
+          CC.ui.toast((nuevo ? 'Egreso ' : 'Cambios guardados en ') + folioEgreso(res) + (nuevo ? ' registrado' : ''), 'good');
+          // el recibo se baja al crearlo o al volver a firmarlo, no en cada corrección
+          if (recibo && (nuevo || firmaPNG)) CC.Comprobantes.descargar(CC.Comprobantes.reciboEgreso(res.id), true);
+        });
+      };
+    });
+}
+
+/** Los egresos de una categoría en un mes: para contestar "¿por qué tanto aquí?". */
+function detalleCategoria(categoria, periodo) {
+  var esc = CC.ui.esc;
+  var lista = CC.Model.gastosVigentes().filter(function (g) { return g.categoria === categoria && g.periodo === periodo; })
+    .sort(function (a, b) { return a.fecha < b.fecha ? -1 : 1; });
+  var total = lista.reduce(function (a, g) { return a + (Number(g.monto) || 0); }, 0);
+  CC.ui.modal(categoria + ' — ' + CC.fmt.periodo(periodo),
+    '<div class="tablewrap"><table class="ledger"><thead><tr><th>Folio</th><th>Fecha</th><th>Concepto</th><th>Sale de</th><th class="r">Monto</th><th></th></tr></thead><tbody>' +
+    lista.map(function (g) {
+      return '<tr><td class="mono" style="font-size:12px">' + esc(folioEgreso(g)) + '</td>' +
+        '<td class="mono" style="font-size:12px">' + esc(CC.fmt.fechaCorta(g.fecha)) + '</td>' +
+        '<td><div class="cellstack"><span>' + esc(g.concepto) + '</span><small>' + esc(g.proveedor || '') + '</small></div></td>' +
+        '<td>' + esc(nombreCuenta(g.cuenta)) + '</td>' +
+        '<td class="r strong">' + esc(CC.fmt.money2(g.monto)) + '</td>' +
+        '<td class="r"><button class="btn btn--sm btn--ghost" data-corregir="' + esc(g.id) + '">Corregir</button></td></tr>';
+    }).join('') + '</tbody><tfoot><tr><td colspan="4">' + lista.length + ' movimientos</td><td class="r">' +
+    esc(CC.fmt.money2(total)) + '</td><td></td></tr></tfoot></table></div>' +
+    '<p class="field__hint" style="margin-top:10px">Si algo está en la categoría equivocada, ábrelo con "Corregir" y cámbiale la categoría.</p>',
+    function (cuerpo) {
+      cuerpo.querySelectorAll('[data-corregir]').forEach(function (b) {
+        b.onclick = function () { formularioEgreso(CC.Store.gasto(b.getAttribute('data-corregir'))); };
+      });
+    });
+}
+
 CC.vistas.gastos = {
-  titulo: 'Gastos y servicios',
+  titulo: 'Egresos',
   sub: function (ctx) {
     var r = CC.Model.resumen(ctx.periodo);
     return CC.fmt.periodo(ctx.periodo) + ' · ' + CC.fmt.money(r.egresos) + ' en egresos';
   },
   acciones: function () {
-    return [{ texto: 'Registrar gasto', icono: 'mas', clase: 'btn', accion: 'gasto' }];
+    return [
+      { texto: 'Registrar egreso', icono: 'mas', clase: 'btn', accion: 'gasto' },
+      { texto: 'Con recibo firmado', icono: 'recibos', clase: 'btn btn--ghost', accion: 'gastoConRecibo' },
+      { texto: 'Exportar a Excel', icono: 'reportes', clase: 'btn btn--ghost', accion: 'exportar' }
+    ];
   },
 
   render: function (ctx) {
     var esc = CC.ui.esc;
     var p = ctx.periodo;
     var r = CC.Model.resumen(p);
+    var f = filtroEgresos;
+    var delMes = CC.Store.gastos().filter(function (g) { return g.periodo === p; });
+    var vigentes = delMes.filter(function (g) { return g.estado !== 'cancelado'; });
+    var porCuenta = function (id) {
+      return vigentes.filter(function (g) { return (g.cuenta || 'banco') === id; })
+        .reduce(function (a, g) { return a + (Number(g.monto) || 0); }, 0);
+    };
+    var sobre = r.presupuestoEgresos > 0 ? r.egresos - r.presupuestoEgresos : 0;
     var out = [];
 
-    var sobre = r.presupuestoEgresos > 0 ? r.egresos - r.presupuestoEgresos : 0;
-
     out.push(CC.ui.stats([
-      { lab: 'Egresos del mes', val: CC.fmt.money(r.egresos), nota: '<span>' + CC.Store.gastos().filter(function (g) { return g.periodo === p; }).length + ' movimientos</span>' },
-      { lab: 'Ya pagados', val: CC.fmt.money(r.egresosPagados), tono: 'good', nota: '<span>salieron de la caja</span>' },
+      { lab: 'Egresos del mes', val: CC.fmt.money(r.egresos), nota: '<span>' + vigentes.length + ' movimientos</span>' },
+      { lab: 'Salió del banco', val: CC.fmt.money(porCuenta('banco')), nota: '<span>transferencias y cheques</span>' },
+      { lab: 'Salió de caja chica', val: CC.fmt.money(porCuenta('caja')), nota: '<span>en efectivo</span>' },
       {
-        lab: 'Pendientes de pago', val: CC.fmt.money(r.egresosPendientes),
-        tono: r.egresosPendientes > 0 ? 'warn' : 'good',
-        nota: '<span>comprometidos, sin salir</span>'
-      },
-      {
-        lab: 'Contra presupuesto',
-        val: r.presupuestoEgresos > 0 ? CC.fmt.moneySigno(-sobre) : '—',
+        lab: 'Contra presupuesto', val: r.presupuestoEgresos > 0 ? CC.fmt.moneySigno(-sobre) : '—',
         tono: sobre > 0 ? 'crit' : 'good',
-        nota: r.presupuestoEgresos > 0
-          ? '<span>' + (sobre > 0 ? 'por encima' : 'por debajo') + ' de ' + esc(CC.fmt.money(r.presupuestoEgresos)) + '</span>'
-          : '<span>define el presupuesto en Ajustes</span>'
+        nota: r.egresosPendientes > 0
+          ? '<span style="color:var(--warn)">' + esc(CC.fmt.money(r.egresosPendientes)) + ' sin pagar</span>'
+          : '<span>' + (sobre > 0 ? 'por encima' : 'por debajo') + ' de lo presupuestado</span>'
       }
     ]));
 
-    /* --- Presupuesto contra real por categoria --- */
+    /* --- Por categoría, agrupado en fijos, variables y otros --- */
     var cats = CC.Model.porCategoria(p);
-    if (cats.length) {
-      var filasCat = cats.map(function (c) {
-        var dif = c.monto - c.presupuesto;
-        var pct = c.presupuesto > 0 ? c.monto / c.presupuesto : 0;
-        var tono = c.presupuesto > 0 && pct > 1.05 ? 'crit' : c.presupuesto > 0 && pct > 0.98 ? 'warn' : 'good';
-        var color = tono === 'crit' ? 'var(--crit)' : tono === 'warn' ? 'var(--warn)' : 'var(--accent)';
-        return '<tr>' +
-          '<td class="strong">' + esc(c.categoria) + '</td>' +
-          '<td class="r muted">' + (c.presupuesto ? esc(CC.fmt.money2(c.presupuesto)) : '—') + '</td>' +
-          '<td class="r strong">' + esc(CC.fmt.money2(c.monto)) + '</td>' +
-          '<td style="min-width:110px"><span class="bar__track" style="display:block">' +
-          '<span class="bar__fill" style="width:' + Math.min(100, (c.presupuesto ? pct : 1) * 100).toFixed(1) +
-          '%;background:' + color + '"></span></span></td>' +
-          '<td class="r" style="color:' + (c.presupuesto ? (dif > 0 ? 'var(--crit)' : 'var(--good)') : 'var(--muted)') + '">' +
-          (c.presupuesto ? esc(CC.fmt.moneySigno(dif)) : '—') + '</td>' +
-          '<td class="r">' + (c.pendiente > 0
-            ? '<span class="pill pill--warn">' + esc(CC.fmt.money(c.pendiente)) + ' sin pagar</span>'
-            : '<span class="pill pill--good">Cubierto</span>') + '</td>' +
-          '</tr>';
-      }).join('');
+    var grupoDe = {};
+    CC.Store.categorias().forEach(function (c) { grupoDe[c.nombre] = c.grupo || 'variable'; });
+    var bloques = Object.keys(GRUPOS_CAT).map(function (gk) {
+      var del = cats.filter(function (c) { return (grupoDe[c.categoria] || 'otro') === gk && c.monto > 0; });
+      if (!del.length) return '';
+      var sub = del.reduce(function (a, c) { return a + c.monto; }, 0);
+      var subP = del.reduce(function (a, c) { return a + c.presupuesto; }, 0);
+      return '<tr class="ledger__grupo"><td colspan="5">' + esc(GRUPOS_CAT[gk]) + '</td></tr>' +
+        del.map(function (c) {
+          var dif = c.monto - c.presupuesto;
+          return '<tr class="fila-clic" data-detalle="' + esc(c.categoria) + '" title="Ver el detalle">' +
+            '<td class="strong">' + esc(c.categoria) + ' <span class="muted" style="font-size:11px">· ver</span></td>' +
+            '<td class="r muted">' + (c.presupuesto ? esc(CC.fmt.money2(c.presupuesto)) : '—') + '</td>' +
+            '<td class="r strong">' + esc(CC.fmt.money2(c.monto)) + '</td>' +
+            '<td class="r" style="color:' + (c.presupuesto ? (dif > 0 ? 'var(--crit)' : 'var(--good)') : 'var(--muted)') + '">' +
+            (c.presupuesto ? esc(CC.fmt.moneySigno(dif)) : '—') + '</td>' +
+            '<td class="r">' + (c.pendiente > 0 ? '<span class="pill pill--warn">' + esc(CC.fmt.money(c.pendiente)) + ' sin pagar</span>' : '') + '</td></tr>';
+        }).join('') +
+        '<tr class="subtotal"><td>Subtotal ' + esc(GRUPOS_CAT[gk].toLowerCase()) + '</td><td class="r">' + esc(CC.fmt.money2(subP)) +
+        '</td><td class="r">' + esc(CC.fmt.money2(sub)) + '</td><td colspan="2"></td></tr>';
+    }).join('');
 
-      out.push('<div class="panelbox">' +
-        '<div class="panelbox__head"><h3>Presupuesto contra gasto real</h3>' +
-        '<span class="eyebrow">' + esc(CC.fmt.periodo(p)) + '</span></div>' +
-        '<div class="tablewrap"><table class="ledger">' +
-        '<thead><tr><th>Servicio</th><th class="r">Presupuesto</th><th class="r">Real</th>' +
-        '<th></th><th class="r">Diferencia</th><th class="r">Estado</th></tr></thead>' +
-        '<tbody>' + filasCat + '</tbody>' +
-        '<tfoot><tr><td>Totales</td>' +
-        '<td class="r">' + esc(CC.fmt.money2(r.presupuestoEgresos)) + '</td>' +
-        '<td class="r">' + esc(CC.fmt.money2(r.egresos)) + '</td>' +
-        '<td></td><td class="r">' + esc(CC.fmt.moneySigno(r.egresos - r.presupuestoEgresos)) + '</td>' +
-        '<td></td></tr></tfoot>' +
-        '</table></div></div>');
+    if (bloques) {
+      out.push('<div class="panelbox"><div class="panelbox__head"><h3>En qué se gastó</h3>' +
+        '<span class="eyebrow">' + esc(CC.fmt.periodo(p)) + ' · toca una categoría para ver su detalle</span></div>' +
+        '<div class="tablewrap"><table class="ledger"><thead><tr><th>Categoría</th><th class="r">Presupuesto</th><th class="r">Real</th>' +
+        '<th class="r">Diferencia</th><th></th></tr></thead><tbody>' + bloques + '</tbody>' +
+        '<tfoot><tr><td>Total</td><td class="r">' + esc(CC.fmt.money2(r.presupuestoEgresos)) + '</td><td class="r">' +
+        esc(CC.fmt.money2(r.egresos)) + '</td><td class="r">' + esc(CC.fmt.moneySigno(r.egresos - r.presupuestoEgresos)) +
+        '</td><td></td></tr></tfoot></table></div></div>');
     }
 
-    /* --- Movimientos del periodo --- */
-    var lista = CC.Store.gastos()
-      .filter(function (g) { return g.periodo === p; })
-      .sort(function (a, b) { return a.fecha < b.fecha ? 1 : -1; });
+    /* --- Movimientos con su folio --- */
+    var chips = [['todas', 'Todos'], ['banco', 'Banco'], ['caja', 'Caja chica']].map(function (c) {
+      return '<button class="chip' + (f.cuenta === c[0] ? ' is-on' : '') + '" data-fcuenta="' + c[0] + '">' + esc(c[1]) + '</button>';
+    }).join('');
+    var lista = delMes.filter(function (g) { return f.cuenta === 'todas' || (g.cuenta || 'banco') === f.cuenta; })
+      .sort(function (a, b) { return (b.folioE || 0) - (a.folioE || 0); });
 
-    out.push('<div class="panelbox">' +
-      '<div class="panelbox__head"><h3>Movimientos del periodo</h3></div>' +
-      (lista.length
-        ? '<div class="tablewrap"><table class="ledger">' +
-          '<thead><tr><th>Fecha</th><th>Concepto</th><th>Proveedor</th><th>Folio</th>' +
-          '<th class="r">Monto</th><th class="c">Estado</th><th class="noprint"></th></tr></thead><tbody>' +
+    out.push('<div class="section">' +
+      '<div class="section__head"><h2>Movimientos del mes</h2><div class="chips noprint">' + chips + '</div></div>' +
+      '<div class="panelbox">' + (lista.length
+        ? '<div class="tablewrap"><table class="ledger"><thead><tr><th>Folio</th><th>Fecha</th><th>Concepto</th>' +
+          '<th>Sale de</th><th class="r">Monto</th><th class="c">Estado</th><th class="noprint"></th></tr></thead><tbody>' +
           lista.map(function (g) {
-            var pendiente = g.estado !== 'pagado';
-            return '<tr class="' + (pendiente ? 'row--warn' : '') + '">' +
+            var cancel = g.estado === 'cancelado', pend = g.estado === 'pendiente';
+            return '<tr class="' + (cancel ? 'row--cancelado' : pend ? 'row--warn' : '') + '">' +
+              '<td class="mono" style="font-size:12px;white-space:nowrap">' + esc(folioEgreso(g)) + '</td>' +
               '<td class="mono" style="font-size:12px;white-space:nowrap">' + esc(CC.fmt.fechaCorta(g.fecha)) + '</td>' +
-              '<td><div class="cellstack"><span>' + esc(g.concepto) + '</span>' +
-              '<small>' + esc(g.categoria) + '</small></div></td>' +
-              '<td>' + esc(g.proveedor || '—') + '</td>' +
-              '<td class="mono" style="font-size:11.5px;color:var(--muted)">' + esc(g.folio || '—') + '</td>' +
+              '<td><div class="cellstack"><span>' + esc(g.concepto) + '</span><small>' +
+              esc([g.categoria, g.proveedor].filter(Boolean).join(' · ')) +
+              ((g.historial || []).length ? ' · corregido' : '') + '</small></div></td>' +
+              '<td><div class="cellstack"><span>' + esc(nombreCuenta(g.cuenta)) + '</span><small>' +
+              esc([g.metodo, g.referencia || g.folio].filter(Boolean).join(' · ')) + '</small></div></td>' +
               '<td class="r strong">' + esc(CC.fmt.money2(g.monto)) + '</td>' +
-              '<td class="c">' + (pendiente
-                ? '<span class="pill pill--warn">Por pagar</span>'
-                : '<span class="pill pill--good">Pagado</span>') + '</td>' +
+              '<td class="c">' + (cancel ? '<span class="pill pill--mute" title="' + esc(g.motivoCancelacion || '') + '">Cancelado</span>'
+                : pend ? '<span class="pill pill--warn">Por pagar</span>' : '<span class="pill pill--good">Pagado</span>') + '</td>' +
               '<td class="r noprint" style="white-space:nowrap">' +
-              (pendiente
-                ? '<button class="btn btn--sm btn--soft" data-pagar="' + esc(g.id) + '">Marcar pagado</button> '
-                : '') +
-              '<button class="iconbtn" data-delgasto="' + esc(g.id) + '" title="Eliminar gasto">' +
-              CC.ui.icono('cerrar', 'i--sm') + '</button>' +
+              (pend ? '<button class="btn btn--sm btn--soft" data-pagar="' + esc(g.id) + '">Marcar pagado</button> ' : '') +
+              (g.recibo && !cancel ? '<button class="btn btn--sm btn--soft" data-recibo="' + esc(g.id) + '" title="Recibo en PDF">' +
+                CC.ui.icono('imprimir', 'i--sm') + ' Recibo</button> ' : '') +
+              '<button class="btn btn--sm btn--ghost" data-editar="' + esc(g.id) + '">' + (cancel ? 'Ver' : 'Corregir') + '</button>' +
               '</td></tr>';
-          }).join('') + '</tbody>' +
-          '<tfoot><tr><td colspan="4">' + lista.length + ' movimientos</td>' +
-          '<td class="r">' + esc(CC.fmt.money2(r.egresos)) + '</td><td colspan="2"></td></tr></tfoot>' +
-          '</table></div>'
-        : '<div class="empty"><strong>Sin gastos en este periodo</strong>' +
-          '<p>Registra los servicios del condominio: vigilancia, limpieza, agua, luz de áreas comunes, elevador.</p>' +
-          '<button class="btn" data-accion="gasto" style="margin-top:8px">Registrar el primero</button></div>') +
-      '</div>');
+          }).join('') + '</tbody><tfoot><tr><td colspan="4">' + lista.length + ' movimientos</td><td class="r">' +
+          esc(CC.fmt.money2(lista.filter(function (g) { return g.estado !== 'cancelado'; })
+            .reduce(function (a, g) { return a + (Number(g.monto) || 0); }, 0))) + '</td><td colspan="2"></td></tr></tfoot></table></div>'
+        : '<div class="empty"><strong>Sin egresos en este periodo</strong><p>Registra cada pago: luz, vigilancia, ' +
+          'el jardinero. El folio se pone solo.</p><button class="btn" data-accion="gasto" style="margin-top:8px">Registrar el primero</button></div>') +
+      '</div></div>');
 
     return out.join('');
   },
 
-  montar: function (raiz) {
+  montar: function (raiz, ctx, redibujar) {
+    raiz.querySelectorAll('[data-fcuenta]').forEach(function (b) {
+      b.onclick = function () { filtroEgresos.cuenta = b.getAttribute('data-fcuenta'); redibujar(); };
+    });
+    raiz.querySelectorAll('[data-detalle]').forEach(function (tr) {
+      tr.onclick = function () { detalleCategoria(tr.getAttribute('data-detalle'), ctx.periodo); };
+    });
+    raiz.querySelectorAll('[data-editar]').forEach(function (b) {
+      b.onclick = function () { formularioEgreso(CC.Store.gasto(b.getAttribute('data-editar'))); };
+    });
+    raiz.querySelectorAll('[data-recibo]').forEach(function (b) {
+      b.onclick = function () { CC.Comprobantes.descargar(CC.Comprobantes.reciboEgreso(b.getAttribute('data-recibo'))); };
+    });
     raiz.querySelectorAll('[data-pagar]').forEach(function (b) {
       b.onclick = function () {
-        CC.Store.actualizarGasto(b.getAttribute('data-pagar'), { estado: 'pagado', metodo: 'Transferencia' });
-        CC.ui.toast('Gasto marcado como pagado', 'good');
-      };
-    });
-    raiz.querySelectorAll('[data-delgasto]').forEach(function (b) {
-      b.onclick = function () {
-        CC.ui.confirmar('Eliminar gasto',
-          'El movimiento se borra y el saldo en caja se recalcula.',
-          'Eliminar', function () {
-            CC.Store.borrarGasto(b.getAttribute('data-delgasto'));
-            CC.ui.toast('Gasto eliminado');
-          }, true);
+        var g = CC.Store.gasto(b.getAttribute('data-pagar'));
+        CC.Store.editarGasto(g.id, { estado: 'pagado', fechaPago: CC.per.hoyISO(), metodo: g.metodo || 'Transferencia' });
+        CC.ui.toast('Egreso ' + folioEgreso(g) + ' marcado como pagado', 'good');
       };
     });
   },
 
-  /* ---------- Alta de gasto ---------- */
-  gasto: function (ctx) {
-    var esc = CC.ui.esc;
-    var periodo = ctx.periodo;
-    var cats = CC.Store.categorias();
+  gasto: function () { formularioEgreso(null); },
+  gastoConRecibo: function () { formularioEgreso(null, { recibo: true }); },
+  editar: function (id) { formularioEgreso(CC.Store.gasto(id)); },
 
-    CC.ui.modal('Registrar gasto',
-      '<div class="formgrid">' +
-      '<label class="field"><span class="field__lab">Servicio o categoría</span>' +
-      '<select class="input" id="gCat">' +
-      cats.map(function (c) { return '<option value="' + esc(c.nombre) + '">' + esc(c.nombre) + '</option>'; }).join('') +
-      '<option value="__otro">Otro (capturar)</option>' +
-      '</select></label>' +
-
-      '<label class="field" id="gOtroWrap" hidden><span class="field__lab">Nombre del servicio</span>' +
-      '<input class="input" id="gOtro" placeholder="Fumigación, alberca..."></label>' +
-
-      '<label class="field"><span class="field__lab">Proveedor</span>' +
-      '<input class="input" id="gProv" placeholder="Quién presta el servicio"></label>' +
-
-      '<label class="field"><span class="field__lab">Monto</span>' +
-      '<input class="input num" id="gMonto" type="number" min="0" step="0.01" placeholder="0.00"></label>' +
-
-      '<label class="field"><span class="field__lab">Fecha</span>' +
-      '<input class="input" id="gFecha" type="date" value="' + esc(CC.per.hoyISO()) + '"></label>' +
-
-      '<label class="field"><span class="field__lab">Folio o comprobante</span>' +
-      '<input class="input mono" id="gFolio" placeholder="F-0001"></label>' +
-
-      '<label class="field"><span class="field__lab">Estado</span>' +
-      '<select class="input" id="gEstado">' +
-      '<option value="pagado">Ya se pagó</option>' +
-      '<option value="pendiente">Pendiente de pago</option>' +
-      '</select></label>' +
-
-      '<label class="field"><span class="field__lab">Método</span>' +
-      '<select class="input" id="gMetodo">' +
-      ['Transferencia', 'Efectivo', 'Cheque', 'Domiciliación', 'Tarjeta'].map(function (m) {
-        return '<option>' + m + '</option>';
-      }).join('') + '</select></label>' +
-      '</div>' +
-
-      '<label class="field" style="margin-top:14px"><span class="field__lab">Concepto</span>' +
-      '<input class="input" id="gConcepto" placeholder="Se completa solo con el servicio y el mes"></label>' +
-
-      '<div class="formactions">' +
-      '<button type="button" class="btn btn--ghost" id="gCancel">Cancelar</button>' +
-      '<button type="button" class="btn" id="gOk">Registrar gasto</button>' +
-      '</div>',
-
-      function (cuerpo) {
-        var selCat = cuerpo.querySelector('#gCat');
-        var otroWrap = cuerpo.querySelector('#gOtroWrap');
-        var inProv = cuerpo.querySelector('#gProv');
-        var inMonto = cuerpo.querySelector('#gMonto');
-
-        function sincronizar() {
-          var esOtro = selCat.value === '__otro';
-          otroWrap.hidden = !esOtro;
-          if (esOtro) return;
-          var c = cats.filter(function (x) { return x.nombre === selCat.value; })[0];
-          if (c) {
-            if (!inProv.value) inProv.value = c.proveedor || '';
-            if (!inMonto.value && c.presupuesto) inMonto.value = c.presupuesto;
-          }
-        }
-        sincronizar();
-        selCat.onchange = function () { inProv.value = ''; inMonto.value = ''; sincronizar(); };
-
-        cuerpo.querySelector('#gCancel').onclick = CC.ui.cerrarModal;
-
-        cuerpo.querySelector('#gOk').onclick = function () {
-          var categoria = selCat.value === '__otro'
-            ? cuerpo.querySelector('#gOtro').value.trim()
-            : selCat.value;
-          if (!categoria) { CC.ui.toast('Captura el nombre del servicio', 'crit'); return; }
-
-          var monto = Number(inMonto.value);
-          if (!(monto > 0)) { CC.ui.toast('Captura un monto mayor a cero', 'crit'); return; }
-
-          var fecha = cuerpo.querySelector('#gFecha').value || CC.per.hoyISO();
-          var estado = cuerpo.querySelector('#gEstado').value;
-          var concepto = cuerpo.querySelector('#gConcepto').value.trim() ||
-            (categoria + ' — ' + CC.fmt.periodo(CC.per.de(fecha)));
-
-          CC.Store.agregarGasto({
-            periodo: CC.per.de(fecha),
-            fecha: fecha,
-            categoria: categoria,
-            proveedor: inProv.value.trim(),
-            concepto: concepto,
-            monto: monto,
-            estado: estado,
-            metodo: estado === 'pagado' ? cuerpo.querySelector('#gMetodo').value : '',
-            folio: cuerpo.querySelector('#gFolio').value.trim()
-          });
-          CC.ui.cerrarModal();
-          CC.ui.toast('Gasto registrado', 'good');
-          if (CC.per.de(fecha) !== periodo) {
-            CC.ui.toast('Quedó en ' + CC.fmt.periodo(CC.per.de(fecha)) + ', según su fecha');
-          }
-        };
+  /** Todos los egresos del mes en una hoja de Excel (CSV). */
+  exportar: function (ctx) {
+    var filas = CC.Store.gastos().filter(function (g) { return g.periodo === ctx.periodo; })
+      .sort(function (a, b) { return (a.folioE || 0) - (b.folioE || 0); })
+      .map(function (g) {
+        return [folioEgreso(g), g.fecha, g.concepto, g.categoria, g.proveedor || '', nombreCuenta(g.cuenta),
+          g.metodo || '', g.referencia || g.folio || '', Number(g.monto) || 0,
+          g.estado === 'cancelado' ? 'Cancelado' : g.estado === 'pendiente' ? 'Por pagar' : 'Pagado', g.nota || ''];
       });
+    CC.ui.descargarCSV('Egresos ' + CC.fmt.periodo(ctx.periodo),
+      ['Folio', 'Fecha', 'Concepto', 'Categoría', 'Quién recibe', 'Sale de', 'Forma de pago', 'Referencia', 'Monto', 'Estado', 'Nota'], filas);
   }
 };

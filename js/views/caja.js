@@ -1,332 +1,426 @@
-/* views/caja.js — caja chica: el efectivo que maneja la administración.
+/* views/caja.js — banco y caja chica: dónde está el dinero del condominio.
  *
- * El caso que lo motiva: cada semana se les paga en efectivo a los de la
- * basura. Se captura el egreso, firma quien recibe y el recibo con su folio y
- * su concepto se descarga solo, en PDF. Lo mismo con los ingresos en efectivo
- * (una tarjeta de acceso, la renta del salón): el vecino se lleva su recibo.
+ * Como lo lleva la administración de Mallorca: lo que se cobra en efectivo
+ * entra a la caja chica y de ahí salen los gastos menores; lo que sobra se
+ * deposita al banco con un traspaso. Cada cuenta tiene su saldo en el momento,
+ * que es lo que se compara contra el banco y contra el efectivo contado.
  *
- * La caja tiene un fondo fijo. Cuando se gasta, se repone desde la cuenta del
- * condominio y esa reposición aparece en Gastos como "Caja chica".
+ * La conciliación lee el estado de cuenta que baja el banco (Excel o CSV) y lo
+ * empareja con lo capturado: dice qué cuadra, qué está en el banco y falta
+ * capturar, y qué está capturado y no aparece en el banco.
  */
 window.CC = window.CC || {};
 CC.vistas = CC.vistas || {};
 
-var ATAJOS_CAJA = {
-  egreso: [
-    ['Basura', 'Pago semanal a recolectores de basura'],
-    ['Agua', 'Garrafones de agua para caseta'],
-    ['Limpieza', 'Material de limpieza'],
-    ['Papelería', 'Papelería y copias'],
-    ['Ferretería', 'Material de ferretería'],
-    ['Otro', '']
-  ],
-  ingreso: [
-    ['Tarjeta de acceso', 'Venta de tarjeta de acceso'],
-    ['Salón', 'Renta del salón de eventos'],
-    ['Multa', 'Pago de multa por reglamento'],
-    ['Otro', '']
-  ]
-};
+var cuentaVista = 'banco';
+var ultimaConciliacion = null;
 
-/** Captura de un egreso o un ingreso, con firma y foto opcionales. */
-function formularioCaja(tipo) {
+function folioT(t) { return 'T-' + String(t.folio || 0).padStart(4, '0'); }
+function folioI(i) { return 'I-' + String(i.folio || 0).padStart(4, '0'); }
+
+/** Traspaso entre cuentas: el depósito del efectivo al banco, o sacar efectivo para la caja. */
+function formularioTraspaso(traspaso) {
   var esc = CC.ui.esc;
-  var egreso = tipo === 'egreso';
-  var folio = CC.Comprobantes.folio('C-', (CC.Store.estado().meta.folioCaja || 0) + 1);
-  var casas = CC.Store.unidades().slice().sort(CC.Model.ordenCasas);
-
-  CC.ui.modal((egreso ? 'Egreso de caja chica' : 'Ingreso a caja chica') + ' — folio ' + folio,
-    '<div class="chips" id="kAtajos" style="margin-bottom:14px">' + ATAJOS_CAJA[tipo].map(function (a, i) {
-      return '<button type="button" class="chip' + (i === 0 ? ' is-on' : '') + '" data-atajo="' + i + '">' + esc(a[0]) + '</button>';
-    }).join('') + '</div>' +
-
+  var t = traspaso || {};
+  var nuevo = !traspaso;
+  var saldoCaja = CC.Model.saldoCuenta('caja');
+  CC.ui.modal(nuevo ? 'Traspaso entre cuentas' : 'Corregir traspaso ' + folioT(t),
     '<div class="formgrid">' +
-    '<label class="field"><span class="field__lab">' + (egreso ? 'Quién recibe el dinero' : 'Quién entrega el dinero') + '</span>' +
-    '<input class="input" id="kNombre" placeholder="Nombre completo" autocomplete="off"></label>' +
-    (egreso ? '' :
-      '<label class="field"><span class="field__lab">Casa (opcional)</span>' +
-      '<select class="input" id="kCasa"><option value="">No es de una casa</option>' +
-      casas.map(function (u) { return '<option value="' + esc(u.id) + '">' + esc(u.clave) + ' — ' + esc(u.propietario) + '</option>'; }).join('') +
-      '</select></label>') +
-    '<label class="field"><span class="field__lab">Cantidad</span>' +
-    '<input class="input num" id="kMonto" type="number" min="0" step="0.01" placeholder="0.00"></label>' +
+    '<label class="field"><span class="field__lab">De</span><select class="input" id="tDe">' +
+    CC.Store.cuentas().map(function (c) {
+      return '<option value="' + esc(c.id) + '"' + ((t.de || 'caja') === c.id ? ' selected' : '') + '>' + esc(c.nombre) + '</option>';
+    }).join('') + '</select></label>' +
+    '<label class="field"><span class="field__lab">A</span><select class="input" id="tA">' +
+    CC.Store.cuentas().map(function (c) {
+      return '<option value="' + esc(c.id) + '"' + ((t.a || 'banco') === c.id ? ' selected' : '') + '>' + esc(c.nombre) + '</option>';
+    }).join('') + '</select></label>' +
+    '<label class="field"><span class="field__lab">Monto</span>' +
+    '<input class="input num" id="tMonto" type="number" min="0" step="0.01" value="' + esc(nuevo ? saldoCaja.toFixed(2) : t.monto) + '">' +
+    '<span class="field__hint">' + (nuevo ? 'En caja chica hay ' + esc(CC.fmt.money2(saldoCaja)) : '') + '</span></label>' +
     '<label class="field"><span class="field__lab">Fecha</span>' +
-    '<input class="input" id="kFecha" type="date" value="' + esc(CC.per.hoyISO()) + '"></label>' +
-    (egreso ?
-      '<label class="field"><span class="field__lab">Identificación (opcional)</span>' +
-      '<input class="input mono" id="kIne" placeholder="INE, gafete o teléfono"></label>' : '') +
+    '<input class="input" id="tFecha" type="date" value="' + esc(t.fecha || CC.per.hoyISO()) + '"></label>' +
+    '<label class="field"><span class="field__lab">Ficha de depósito o referencia</span>' +
+    '<input class="input mono" id="tRef" value="' + esc(t.referencia || '') + '" placeholder="Folio de la ficha"></label>' +
     '</div>' +
-
-    '<label class="field" style="margin-top:14px"><span class="field__lab">Por concepto de</span>' +
-    '<input class="input" id="kConcepto"><span class="field__hint">Es lo que dirá el recibo</span></label>' +
-
-    '<label class="field" style="margin-top:14px"><span class="field__lab">Nota (opcional)</span>' +
-    '<input class="input" id="kNota" placeholder="' + (egreso ? 'Ruta 14, camión municipal' : 'Pagó en efectivo en la caseta') + '"></label>' +
-
-    '<div class="capturas">' +
-    '<div class="captura">' +
-    '<div class="captura__head"><span class="field__lab">' + (egreso ? 'Firma de quien recibe' : 'Firma de quien entrega (opcional)') + '</span>' +
-    '<button type="button" class="btn btn--sm btn--ghost" id="kLimpiar">Borrar</button></div>' +
-    '<canvas id="kFirma" class="lienzo"></canvas>' +
-    '<span class="field__hint">Con el dedo en el celular o con el mouse</span></div>' +
-    '<div class="captura" id="kFotoCaja">' +
-    '<div class="captura__head"><span class="field__lab">Foto (opcional)</span>' +
-    '<button type="button" class="btn btn--sm btn--ghost" id="kQuitarFoto" hidden>Quitar</button></div>' +
-    '<label class="dropfoto" for="kFoto" id="kFotoEtiqueta">' + CC.ui.icono('imprimir') +
-    '<span>Tomar foto o elegir del carrete</span><small>' + (egreso ? 'El ticket o la nota' : 'El comprobante') + '</small></label>' +
-    '<input type="file" id="kFoto" accept="image/*" capture="environment" hidden>' +
-    '<div id="kFotoPrev"></div></div>' +
-    '</div>' +
-
+    '<label class="field" style="margin-top:14px"><span class="field__lab">Nota</span>' +
+    '<input class="input" id="tNota" value="' + esc(t.nota || '') + '" placeholder="Depósito del efectivo de la semana"></label>' +
     '<div class="formactions">' +
-    '<button type="button" class="btn btn--ghost" id="kCancel">Cancelar</button>' +
-    '<button type="button" class="btn" id="kOk">Guardar y descargar recibo</button>' +
-    '</div>',
-
+    (!nuevo && !t.cancelado ? '<button type="button" class="btn btn--ghost" id="tCancelar" style="margin-right:auto">Cancelar traspaso</button>' : '') +
+    (!nuevo ? '<button type="button" class="btn btn--ghost" id="tPdf">' + CC.ui.icono('imprimir', 'i--sm') + ' Póliza</button>' : '') +
+    '<button type="button" class="btn btn--ghost" id="tCerrar">Cerrar</button>' +
+    '<button type="button" class="btn" id="tOk">' + (nuevo ? 'Hacer traspaso' : 'Guardar cambios') + '</button></div>',
     function (cuerpo) {
       var q = function (id) { return cuerpo.querySelector('#' + id); };
-      var atajo = 0;
-      var concepto = q('kConcepto');
-
-      function ponerAtajo(i) {
-        atajo = i;
-        cuerpo.querySelectorAll('[data-atajo]').forEach(function (b) {
-          b.classList.toggle('is-on', Number(b.getAttribute('data-atajo')) === i);
-        });
-        concepto.value = ATAJOS_CAJA[tipo][i][1];
-        if (!concepto.value) concepto.focus();
-      }
-      cuerpo.querySelectorAll('[data-atajo]').forEach(function (b) {
-        b.onclick = function () { ponerAtajo(Number(b.getAttribute('data-atajo'))); };
-      });
-      ponerAtajo(0);
-
-      var casa = q('kCasa');
-      if (casa) casa.onchange = function () {
-        var u = CC.Store.unidad(casa.value);
-        if (u && !q('kNombre').value) q('kNombre').value = u.inquilino || u.propietario || '';
+      q('tCerrar').onclick = CC.ui.cerrarModal;
+      if (q('tPdf')) q('tPdf').onclick = function () { CC.Comprobantes.descargar(CC.Comprobantes.polizaTraspaso(t.id)); };
+      if (q('tCancelar')) q('tCancelar').onclick = function () {
+        CC.ui.confirmar('Cancelar traspaso ' + folioT(t), 'El dinero vuelve a contar en la cuenta de origen. El folio queda a la vista.',
+          'Cancelar traspaso', function () { CC.Store.cancelarTraspaso(t.id); CC.ui.toast('Traspaso cancelado'); }, true);
       };
-
-      var firma = CC.Firma(q('kFirma'));
-      q('kLimpiar').onclick = function () { firma.limpiar(); };
-
-      var fotoDataURL = null;
-      var entrada = q('kFoto'), prev = q('kFotoPrev'), etiqueta = q('kFotoEtiqueta'), quitar = q('kQuitarFoto');
-      CC.Archivos.disponible().then(function (ok) {
-        if (!ok) q('kFotoCaja').innerHTML = '<div class="note note--demo"><div>Este navegador no deja guardar fotos. ' +
-          'El recibo se guarda igual, sin imagen.</div></div>';
-      });
-      entrada.onchange = function () {
-        var f = entrada.files && entrada.files[0];
-        if (!f) return;
-        CC.Archivos.comprimir(f, 1000, 0.65).then(function (dataURL) {
-          fotoDataURL = dataURL;
-          prev.innerHTML = '<img src="' + dataURL + '" alt="Vista previa" style="max-width:100%;border-radius:6px;display:block">';
-          etiqueta.hidden = true;
-          quitar.hidden = false;
-        }, function (err) { CC.ui.toast(err.message || 'No se pudo leer la imagen', 'crit'); });
-      };
-      quitar.onclick = function () {
-        fotoDataURL = null; prev.innerHTML = ''; etiqueta.hidden = false; quitar.hidden = true; entrada.value = '';
-      };
-
-      q('kCancel').onclick = CC.ui.cerrarModal;
-      q('kOk').onclick = function () {
-        var nombre = q('kNombre').value.trim();
-        var monto = Number(q('kMonto').value);
-        var texto = concepto.value.trim();
-        if (!nombre) { CC.ui.toast(egreso ? 'Falta quién recibe el dinero' : 'Falta quién entrega el dinero', 'crit'); return; }
-        if (!(monto > 0)) { CC.ui.toast('Captura una cantidad mayor a cero', 'crit'); return; }
-        if (!texto) { CC.ui.toast('Falta el concepto: es lo que dirá el recibo', 'crit'); return; }
-        if (egreso && monto > CC.Model.cajaChica().saldo + 0.005) {
-          CC.ui.toast('En la caja solo hay ' + CC.fmt.money2(CC.Model.cajaChica().saldo) + '. Primero repón el fondo.', 'crit');
-          return;
-        }
-
-        var boton = q('kOk');
-        boton.disabled = true;
-        boton.textContent = 'Guardando…';
-        var firmaPNG = firma.aPNG();
-        Promise.all([
-          firmaPNG ? CC.Archivos.guardar(firmaPNG, 'firma') : Promise.resolve(null),
-          fotoDataURL ? CC.Archivos.guardar(fotoDataURL, 'foto') : Promise.resolve(null)
-        ]).then(function (ids) {
-          var fecha = q('kFecha').value || CC.per.hoyISO();
-          var m = CC.Store.agregarMovCaja({
-            tipo: tipo, fecha: fecha, periodo: CC.per.de(fecha),
-            concepto: texto, categoria: ATAJOS_CAJA[tipo][atajo][0] === 'Otro' ? '' : ATAJOS_CAJA[tipo][atajo][0],
-            nombre: nombre, unidadId: casa ? casa.value || null : null,
-            identificacion: q('kIne') ? q('kIne').value.trim() : '',
-            monto: monto, metodo: 'Efectivo',
-            firmaId: ids[0], fotoId: ids[1],
-            // si el navegador no deja guardar imágenes aparte, la firma va dentro del registro
-            firmaInline: firmaPNG && !ids[0] ? firmaPNG : null,
-            nota: q('kNota').value.trim()
-          });
-          CC.ui.cerrarModal();
-          CC.Comprobantes.descargar(CC.Comprobantes.reciboCaja(m.id), true).then(function (r) {
-            if (r) CC.ui.toast('Guardado. Recibo ' + CC.Comprobantes.folio('C-', m.folio) + ' descargado', 'good');
-          });
-        });
+      q('tOk').onclick = function () {
+        var de = q('tDe').value, a = q('tA').value, monto = Number(q('tMonto').value);
+        if (de === a) { CC.ui.toast('Elige dos cuentas distintas', 'crit'); return; }
+        if (!(monto > 0)) { CC.ui.toast('Captura un monto mayor a cero', 'crit'); return; }
+        var datos = { de: de, a: a, monto: monto, fecha: q('tFecha').value || CC.per.hoyISO(), referencia: q('tRef').value.trim(), nota: q('tNota').value.trim() };
+        var res = nuevo ? CC.Store.agregarTraspaso(datos) : CC.Store.editarTraspaso(t.id, datos);
+        CC.ui.cerrarModal();
+        CC.ui.toast((nuevo ? 'Traspaso ' : 'Cambios guardados en ') + folioT(res), 'good');
       };
     });
 }
 
+/** Un ingreso que no es cuota: una tarjeta de acceso, una multa en efectivo. Sale su recibo. */
+function formularioIngreso() {
+  var esc = CC.ui.esc;
+  var casas = CC.Store.unidades().slice().sort(CC.Model.ordenCasas);
+  var conceptos = ['Venta de tarjeta de acceso', 'Renta de área común', 'Multa', 'Reposición de llave o control', 'Intereses del banco', 'Otro'];
+  CC.ui.modal('Otro ingreso — folio I-' + String((CC.Store.estado().meta.folioIngreso || 0) + 1).padStart(4, '0') + ' (automático)',
+    '<div class="formgrid">' +
+    '<label class="field"><span class="field__lab">Concepto</span><input class="input" id="iConcepto" list="listaIng" placeholder="Venta de tarjeta de acceso">' +
+    '<datalist id="listaIng">' + conceptos.map(function (c) { return '<option value="' + esc(c) + '">'; }).join('') + '</datalist></label>' +
+    '<label class="field"><span class="field__lab">Quién entrega</span><input class="input" id="iNombre" placeholder="Nombre"></label>' +
+    '<label class="field"><span class="field__lab">Casa (opcional)</span><select class="input" id="iCasa"><option value="">No es de una casa</option>' +
+    casas.map(function (u) { return '<option value="' + esc(u.id) + '">' + esc(u.clave) + ' — ' + esc(u.propietario) + '</option>'; }).join('') + '</select></label>' +
+    '<label class="field"><span class="field__lab">Monto</span><input class="input num" id="iMonto" type="number" min="0" step="0.01"></label>' +
+    '<label class="field"><span class="field__lab">Fecha</span><input class="input" id="iFecha" type="date" value="' + esc(CC.per.hoyISO()) + '"></label>' +
+    '<label class="field"><span class="field__lab">Forma</span><select class="input" id="iForma">' +
+    FORMAS_PAGO.map(function (f) { return '<option>' + f + '</option>'; }).join('') + '</select></label>' +
+    '<label class="field"><span class="field__lab">Entra a</span><select class="input" id="iCuenta">' +
+    CC.Store.cuentas().map(function (c) { return '<option value="' + esc(c.id) + '"' + (c.id === 'caja' ? ' selected' : '') + '>' + esc(c.nombre) + '</option>'; }).join('') +
+    '</select></label>' +
+    '<label class="field"><span class="field__lab">Referencia</span><input class="input mono" id="iRef"></label>' +
+    '</div>' +
+    '<div class="formactions"><button type="button" class="btn btn--ghost" id="iCerrar">Cerrar</button>' +
+    '<button type="button" class="btn" id="iOk">Guardar y descargar recibo</button></div>',
+    function (cuerpo) {
+      var q = function (id) { return cuerpo.querySelector('#' + id); };
+      q('iForma').onchange = function () { q('iCuenta').value = q('iForma').value === 'Efectivo' ? 'caja' : 'banco'; };
+      q('iCasa').onchange = function () {
+        var u = CC.Store.unidad(q('iCasa').value);
+        if (u && !q('iNombre').value) q('iNombre').value = u.propietario || '';
+      };
+      q('iCerrar').onclick = CC.ui.cerrarModal;
+      q('iOk').onclick = function () {
+        var concepto = q('iConcepto').value.trim(), monto = Number(q('iMonto').value);
+        if (!concepto) { CC.ui.toast('Falta el concepto', 'crit'); return; }
+        if (!(monto > 0)) { CC.ui.toast('Captura un monto mayor a cero', 'crit'); return; }
+        var i = CC.Store.agregarIngreso({
+          fecha: q('iFecha').value || CC.per.hoyISO(), concepto: concepto, nombre: q('iNombre').value.trim(),
+          unidadId: q('iCasa').value || null, monto: monto, metodo: q('iForma').value, cuenta: q('iCuenta').value,
+          referencia: q('iRef').value.trim(), categoria: concepto
+        });
+        CC.ui.cerrarModal();
+        CC.Comprobantes.descargar(CC.Comprobantes.reciboIngreso(i.id), true);
+        CC.ui.toast('Ingreso ' + folioI(i) + ' registrado; recibo descargado', 'good');
+      };
+    });
+}
+
+/** Contar el efectivo y compararlo con lo que el sistema dice que debe haber. */
+function formularioArqueo() {
+  var esc = CC.ui.esc;
+  var debe = CC.Model.saldoCuenta('caja');
+  CC.ui.modal('Arqueo de caja chica',
+    '<div class="listo"><span class="muted">Según lo capturado, en la caja debe haber</span>' +
+    '<span class="listo__monto num" style="color:var(--ink)">' + esc(CC.fmt.money2(debe)) + '</span></div>' +
+    '<div class="formgrid">' +
+    '<label class="field"><span class="field__lab">Lo que se contó</span><input class="input num" id="aContado" type="number" min="0" step="0.01"></label>' +
+    '<label class="field"><span class="field__lab">Quién contó</span><input class="input" id="aQuien" placeholder="Tesorero, administración…"></label>' +
+    '</div>' +
+    '<p class="arqueo__dif" id="aDif"></p>' +
+    '<label class="field"><span class="field__lab">Nota</span><input class="input" id="aNota" placeholder="Faltan por capturar los recibos del 22"></label>' +
+    '<div class="formactions"><button type="button" class="btn btn--ghost" id="aCerrar">Cerrar</button>' +
+    '<button type="button" class="btn" id="aOk">Guardar arqueo</button></div>',
+    function (cuerpo) {
+      var q = function (id) { return cuerpo.querySelector('#' + id); };
+      q('aContado').oninput = function () {
+        var dif = (Number(q('aContado').value) || 0) - debe;
+        q('aDif').innerHTML = Math.abs(dif) < 0.005 ? '<span style="color:var(--good)">Cuadra al centavo.</span>'
+          : dif < 0 ? '<span style="color:var(--crit)">Faltan ' + esc(CC.fmt.money2(-dif)) + '.</span> Revisa si hay recibos sin capturar.'
+            : '<span style="color:var(--warn)">Sobran ' + esc(CC.fmt.money2(dif)) + '.</span> Puede faltar capturar un cobro en efectivo.';
+      };
+      q('aCerrar').onclick = CC.ui.cerrarModal;
+      q('aOk').onclick = function () {
+        if (q('aContado').value === '') { CC.ui.toast('Captura lo que se contó', 'crit'); return; }
+        var contado = Number(q('aContado').value) || 0;
+        CC.Store.agregarArqueo({
+          fecha: CC.per.hoyISO(), esperado: debe, contado: contado,
+          diferencia: Math.round((contado - debe) * 100) / 100, quien: q('aQuien').value.trim(), nota: q('aNota').value.trim()
+        });
+        CC.ui.cerrarModal();
+        CC.ui.toast('Arqueo guardado', 'good');
+      };
+    });
+}
+
+function formularioSaldos() {
+  var esc = CC.ui.esc;
+  CC.ui.modal('Saldos iniciales',
+    '<p class="field__hint" style="margin-bottom:12px">Lo que había en cada cuenta el día que empezaron a usar el sistema ' +
+    '(el saldo del banco y el efectivo de la caja que traían de CondoVive). A partir de ahí, el sistema suma y resta solo.</p>' +
+    '<div class="formgrid">' + CC.Store.cuentas().map(function (c) {
+      return '<label class="field"><span class="field__lab">' + esc(c.nombre) + '</span>' +
+        '<input class="input num" type="number" step="0.01" data-cuenta="' + esc(c.id) + '" value="' + esc(c.saldoInicial || 0) + '"></label>';
+    }).join('') + '</div>' +
+    '<div class="formactions"><button type="button" class="btn btn--ghost" id="sCerrar">Cerrar</button>' +
+    '<button type="button" class="btn" id="sOk">Guardar</button></div>',
+    function (cuerpo) {
+      cuerpo.querySelector('#sCerrar').onclick = CC.ui.cerrarModal;
+      cuerpo.querySelector('#sOk').onclick = function () {
+        cuerpo.querySelectorAll('[data-cuenta]').forEach(function (inp) {
+          CC.Store.actualizarCuenta(inp.getAttribute('data-cuenta'), { saldoInicial: Number(inp.value) || 0 });
+        });
+        CC.ui.cerrarModal();
+        CC.ui.toast('Saldos iniciales guardados', 'good');
+      };
+    });
+}
+
+/* ---------- Conciliación con el estado de cuenta del banco ---------- */
+
+function conciliacion() {
+  var esc = CC.ui.esc;
+  CC.ui.modal('Conciliar con el banco',
+    '<p class="field__hint" style="margin-bottom:12px">Descarga de la banca en línea los movimientos del mes en ' +
+    '<strong>Excel o CSV</strong> y súbelos aquí. El sistema los compara con lo capturado.</p>' +
+    '<label class="dropfoto" for="cArchivo">' + CC.ui.icono('reportes') + '<span>Elegir el archivo del banco</span>' +
+    '<small>.xlsx o .csv</small></label><input type="file" id="cArchivo" accept=".xlsx,.csv,.txt" hidden>' +
+    '<div id="cPaso2"></div>',
+    function (cuerpo) {
+      var entrada = cuerpo.querySelector('#cArchivo');
+      entrada.onchange = function () {
+        var f = entrada.files && entrada.files[0];
+        if (!f) return;
+        CC.Importar.leer(f).then(function (filas) { columnas(cuerpo, filas, f.name); },
+          function (err) { CC.ui.toast(err.message || 'No se pudo leer el archivo', 'crit'); });
+      };
+    });
+
+  function columnas(cuerpo, filas, nombre) {
+    var det = CC.Importar.detectarColumnas(filas);
+    var enc = det.encabezados.length ? det.encabezados : (filas[0] || []).map(function (x, i) { return 'Columna ' + (i + 1); });
+    var campos = [['fecha', 'Fecha'], ['concepto', 'Concepto'], ['cargo', 'Cargos (salidas)'], ['abono', 'Abonos (entradas)'],
+      ['monto', 'Importe con signo'], ['saldo', 'Saldo'], ['referencia', 'Referencia']];
+    var sel = function (k) {
+      return '<select class="input input--sm" data-col="' + k + '"><option value="">—</option>' + enc.map(function (h, i) {
+        return '<option value="' + i + '"' + (det.cols[k] === i ? ' selected' : '') + '>' + esc(h || 'Columna ' + (i + 1)) + '</option>';
+      }).join('') + '</select>';
+    };
+    cuerpo.querySelector('#cPaso2').innerHTML =
+      '<p style="margin:14px 0 8px;font-size:13px"><strong>' + esc(nombre) + '</strong> · ' + filas.length + ' renglones. ' +
+      'Revisa qué columna es cada cosa:</p>' +
+      '<div class="formgrid">' + campos.map(function (c) {
+        return '<label class="field"><span class="field__lab">' + esc(c[1]) + '</span>' + sel(c[0]) + '</label>';
+      }).join('') + '</div>' +
+      '<label class="field" style="margin-top:12px"><span class="field__lab">Empieza en el renglón</span>' +
+      '<input class="input input--sm num" id="cInicio" type="number" min="1" value="' + (det.inicio + 1) + '" style="max-width:110px"></label>' +
+      '<div class="formactions"><button type="button" class="btn" id="cComparar">Comparar con lo capturado</button></div>';
+    cuerpo.querySelector('#cComparar').onclick = function () {
+      var cols = {};
+      cuerpo.querySelectorAll('[data-col]').forEach(function (s) { if (s.value !== '') cols[s.getAttribute('data-col')] = Number(s.value); });
+      if (cols.fecha === undefined || (cols.cargo === undefined && cols.abono === undefined && cols.monto === undefined)) {
+        CC.ui.toast('Indica al menos la fecha y los cargos/abonos o el importe', 'crit');
+        return;
+      }
+      var banco = CC.Importar.movimientos(filas, cols, Math.max(0, Number(cuerpo.querySelector('#cInicio').value) - 1));
+      if (!banco.length) { CC.ui.toast('No encontré movimientos con fecha y monto en ese archivo', 'crit'); return; }
+      var desde = banco.reduce(function (a, b) { return b.fecha < a ? b.fecha : a; }, banco[0].fecha);
+      var hasta = banco.reduce(function (a, b) { return b.fecha > a ? b.fecha : a; }, banco[0].fecha);
+      var sistema = CC.Model.movimientosCuenta('banco').filter(function (m) {
+        return m.fecha >= CC.per.masDias(desde, -3) && m.fecha <= CC.per.masDias(hasta, 3);
+      });
+      var r = CC.Importar.conciliar(banco, sistema, 3);
+      // se buscó con unos días de margen, pero solo se reporta lo que cae dentro del archivo
+      r.soloSistema = r.soloSistema.filter(function (m) { return m.fecha >= desde && m.fecha <= hasta; });
+      var saldoBanco = null;
+      banco.slice().sort(function (a, b) { return a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : a.fila - b.fila; })
+        .forEach(function (b) { if (b.saldo !== null) saldoBanco = b.saldo; });
+      ultimaConciliacion = { r: r, desde: desde, hasta: hasta, saldoBanco: saldoBanco, saldoSistema: CC.Model.saldoCuenta('banco', hasta), archivo: nombre };
+      resultado();
+    };
+  }
+}
+
+function resultado() {
+  var esc = CC.ui.esc;
+  var c = ultimaConciliacion;
+  if (!c) return;
+  var dif = c.saldoBanco === null ? null : Math.round((c.saldoBanco - c.saldoSistema) * 100) / 100;
+  var fila = function (m, accion) {
+    return '<tr><td class="mono" style="font-size:12px">' + esc(CC.fmt.fechaCorta(m.fecha)) + '</td>' +
+      '<td>' + esc(m.concepto || '') + (m.referencia ? ' <span class="muted mono" style="font-size:11px">' + esc(m.referencia) + '</span>' : '') + '</td>' +
+      '<td class="r strong" style="color:' + (m.monto > 0 || m.entra > 0 ? 'var(--good)' : 'var(--crit)') + '">' +
+      esc(CC.fmt.money2(m.monto !== undefined ? m.monto : m.entra - m.sale)) + '</td><td class="r">' + (accion || '') + '</td></tr>';
+  };
+  CC.ui.modal('Conciliación del ' + CC.fmt.fecha(c.desde) + ' al ' + CC.fmt.fecha(c.hasta),
+    CC.ui.stats([
+      { lab: 'Cuadran', val: String(c.r.pares.length), tono: 'good', nota: '<span>movimientos iguales en los dos</span>' },
+      { lab: 'Faltan en el sistema', val: String(c.r.soloBanco.length), tono: c.r.soloBanco.length ? 'warn' : 'good', nota: '<span>están en el banco</span>' },
+      { lab: 'No están en el banco', val: String(c.r.soloSistema.length), tono: c.r.soloSistema.length ? 'warn' : 'good', nota: '<span>capturados, sin reflejarse</span>' },
+      dif === null
+        ? { lab: 'Saldo', val: CC.fmt.money2(c.saldoSistema), nota: '<span>el archivo no trae saldo</span>' }
+        : { lab: 'Diferencia de saldo', val: CC.fmt.money2(dif), tono: Math.abs(dif) < 0.01 ? 'good' : 'crit',
+            nota: '<span>banco ' + esc(CC.fmt.money2(c.saldoBanco)) + ' · sistema ' + esc(CC.fmt.money2(c.saldoSistema)) + '</span>' }
+    ]) +
+    (c.r.soloBanco.length
+      ? '<h4 class="conc__tit">En el banco y no en el sistema</h4><p class="field__hint">Comisiones, depósitos sin identificar o pagos que faltó capturar.</p>' +
+        '<div class="tablewrap"><table class="ledger"><tbody>' + c.r.soloBanco.map(function (m, i) {
+          return fila(m, '<button class="btn btn--sm btn--soft" data-capturar="' + i + '">Capturar</button>');
+        }).join('') + '</tbody></table></div>' : '') +
+    (c.r.soloSistema.length
+      ? '<h4 class="conc__tit">Capturado y no aparece en el banco</h4><p class="field__hint">Un cheque que no se ha cobrado, un depósito en tránsito o un error de captura.</p>' +
+        '<div class="tablewrap"><table class="ledger"><tbody>' + c.r.soloSistema.map(function (m) {
+          return fila({ fecha: m.fecha, concepto: m.folio + ' · ' + m.concepto, referencia: m.referencia, monto: m.entra - m.sale });
+        }).join('') + '</tbody></table></div>' : '') +
+    (!c.r.soloBanco.length && !c.r.soloSistema.length ? '<div class="note" style="margin-top:14px"><div><strong>Todo cuadra.</strong> Cada movimiento del banco está capturado.</div></div>' : '') +
+    '<div class="formactions"><button type="button" class="btn btn--ghost" id="rExcel">Descargar para Excel</button>' +
+    '<button type="button" class="btn" id="rOk">Listo</button></div>',
+    function (cuerpo) {
+      cuerpo.querySelector('#rOk').onclick = CC.ui.cerrarModal;
+      cuerpo.querySelector('#rExcel').onclick = function () {
+        var filas = [];
+        c.r.pares.forEach(function (p) { filas.push(['Cuadra', p.banco.fecha, p.banco.concepto, p.banco.monto, p.sistema.folio, p.sistema.concepto]); });
+        c.r.soloBanco.forEach(function (m) { filas.push(['Falta en el sistema', m.fecha, m.concepto, m.monto, '', '']); });
+        c.r.soloSistema.forEach(function (m) { filas.push(['No está en el banco', m.fecha, '', m.entra - m.sale, m.folio, m.concepto]); });
+        CC.ui.descargarCSV('Conciliacion ' + c.desde + ' a ' + c.hasta, ['Resultado', 'Fecha', 'Concepto del banco', 'Monto', 'Folio', 'Concepto del sistema'], filas);
+      };
+      cuerpo.querySelectorAll('[data-capturar]').forEach(function (b) {
+        b.onclick = function () {
+          var m = c.r.soloBanco[Number(b.getAttribute('data-capturar'))];
+          if (m.monto < 0) {
+            CC.vistas.gastos.gasto();
+            var d = document.getElementById('modalBody');
+            d.querySelector('#eConcepto').value = m.concepto || 'Movimiento del banco';
+            d.querySelector('#eMonto').value = Math.abs(m.monto).toFixed(2);
+            d.querySelector('#eFecha').value = m.fecha;
+            d.querySelector('#eRef').value = m.referencia || '';
+            if (/comisi/i.test(m.concepto)) {
+              var op = Array.prototype.filter.call(d.querySelectorAll('#eCat option'), function (o) { return /comisi/i.test(o.value); })[0];
+              if (op) d.querySelector('#eCat').value = op.value;
+            }
+          } else {
+            CC.vistas.cobranza.formularioPago(null, CC.per.de(m.fecha));
+            var d2 = document.getElementById('modalBody');
+            d2.querySelector('#pMonto').value = m.monto.toFixed(2);
+            d2.querySelector('#pFecha').value = m.fecha;
+            d2.querySelector('#pRef').value = m.referencia || '';
+          }
+        };
+      });
+    });
+}
+
 CC.vistas.caja = {
-  titulo: 'Caja chica',
+  titulo: 'Banco y caja chica',
   sub: function () {
-    var k = CC.Model.cajaChica();
-    return CC.fmt.money2(k.saldo) + ' en caja · fondo de ' + CC.fmt.money(k.fondo);
+    return 'Banco ' + CC.fmt.money2(CC.Model.saldoCuenta('banco')) + ' · caja chica ' + CC.fmt.money2(CC.Model.saldoCuenta('caja'));
   },
   acciones: function () {
     return [
-      { texto: 'Egreso', icono: 'mas', clase: 'btn', accion: 'egreso' },
-      { texto: 'Ingreso', icono: 'mas', clase: 'btn btn--ghost', accion: 'ingreso' },
-      { texto: 'Reponer', icono: 'gastos', clase: 'btn btn--ghost', accion: 'reponer' }
+      { texto: 'Traspaso', icono: 'gastos', clase: 'btn', accion: 'traspaso' },
+      { texto: 'Conciliar con el banco', icono: 'reportes', clase: 'btn btn--ghost', accion: 'conciliar' },
+      { texto: 'Arqueo de caja', icono: 'caja', clase: 'btn btn--ghost', accion: 'arqueo' },
+      { texto: 'Otro ingreso', icono: 'mas', clase: 'btn btn--ghost', accion: 'ingreso' }
     ];
   },
 
   render: function (ctx) {
     var esc = CC.ui.esc;
     var p = ctx.periodo;
-    var k = CC.Model.cajaChica();
-    var delMes = k.filas.filter(function (f) { return f.mov.periodo === p; });
-    var sumaTipo = function (t) {
-      return delMes.filter(function (f) { return f.mov.tipo === t; })
-        .reduce(function (a, f) { return a + (Number(f.mov.monto) || 0); }, 0);
-    };
-    var egresos = sumaTipo('egreso'), ingresos = sumaTipo('ingreso');
-    var basura = delMes.filter(function (f) { return f.mov.tipo === 'egreso' && f.mov.categoria === 'Basura'; })
-      .reduce(function (a, f) { return a + (Number(f.mov.monto) || 0); }, 0);
-    var porReponer = Math.max(0, k.fondo - k.saldo);
     var out = [];
+    var cuentas = CC.Store.cuentas();
 
-    out.push(CC.ui.stats([
-      {
-        lab: 'En caja ahora', val: CC.fmt.money2(k.saldo),
-        tono: k.fondo && k.saldo < k.fondo * 0.25 ? 'crit' : 'good',
-        nota: '<span>de un fondo de ' + esc(CC.fmt.money(k.fondo)) + '</span>'
-      },
-      {
-        lab: 'Salió este mes', val: CC.fmt.money2(egresos),
-        nota: '<span>' + (basura ? esc(CC.fmt.money(basura)) + ' a la basura' : esc(CC.fmt.periodo(p))) + '</span>'
-      },
-      { lab: 'Entró este mes', val: CC.fmt.money2(ingresos), nota: '<span>en efectivo</span>' },
-      {
-        lab: 'Por reponer', val: CC.fmt.money2(porReponer), tono: porReponer > 0 ? 'warn' : 'good',
-        nota: '<span>para volver al fondo</span>'
-      }
-    ]));
+    out.push('<div class="cuentas">' + cuentas.map(function (c) {
+      var e = CC.Model.estadoCuentaBanco(c.id, p);
+      return '<button class="cuenta' + (cuentaVista === c.id ? ' is-on' : '') + '" data-vercuenta="' + esc(c.id) + '">' +
+        '<span class="cuenta__nom">' + esc(c.nombre) + '</span>' +
+        '<strong class="num">' + esc(CC.fmt.money2(CC.Model.saldoCuenta(c.id))) + '</strong>' +
+        '<span class="cuenta__det">' + (c.id === 'caja' ? 'debe haber hoy en efectivo' : 'debe decir el banco hoy') + '</span>' +
+        '<span class="cuenta__mes">' + esc(CC.fmt.periodo(p)) + ': entró <b style="color:var(--good)">' + esc(CC.fmt.money(e.entradas)) +
+        '</b> · salió <b style="color:var(--crit)">' + esc(CC.fmt.money(e.salidas)) + '</b></span></button>';
+    }).join('') + '</div>');
 
-    if (k.fondo && k.saldo < k.fondo * 0.25) {
-      out.push('<div class="cta"><div class="cta__txt"><strong>Queda poco efectivo.</strong> ' +
-        'Al reponer ' + esc(CC.fmt.money2(porReponer)) + ' la caja vuelve a ' + esc(CC.fmt.money(k.fondo)) +
-        ' y la reposición queda en Gastos.</div>' +
-        '<button class="btn" data-accion="reponer">Reponer caja</button></div>');
-    }
-
-    var filas = delMes.slice().reverse().map(function (f) {
-      var m = f.mov;
-      var casa = m.unidadId ? CC.Store.unidad(m.unidadId) : null;
-      var etiqueta = m.tipo === 'egreso' ? ['Egreso', 'pill--warn'] : m.tipo === 'ingreso' ? ['Ingreso', 'pill--good'] : ['Reposición', 'pill--mute'];
-      return '<tr>' +
-        '<td class="mono" style="font-size:12px;white-space:nowrap">' + esc(CC.Comprobantes.folio('C-', m.folio)) +
-        '<div class="muted">' + esc(CC.fmt.fechaCorta(m.fecha)) + '</div></td>' +
+    var c = CC.Store.cuenta(cuentaVista) || cuentas[0];
+    var e = CC.Model.estadoCuentaBanco(c.id, p);
+    var filas = e.filas.map(function (m) {
+      var accion = m.tipo === 'traspaso' ? '<button class="btn btn--sm btn--ghost" data-tras="' + esc(m.id) + '">Editar</button>'
+        : m.tipo === 'egreso' ? '<button class="btn btn--sm btn--ghost" data-egreso="' + esc(m.id) + '">Corregir</button>'
+          : m.tipo === 'ingreso' ? '<button class="btn btn--sm btn--ghost" data-ing="' + esc(m.id) + '">Recibo</button>'
+            : '<button class="btn btn--sm btn--ghost" data-pago="' + esc(m.id) + '">Recibo</button>';
+      return '<tr' + (m.tipo === 'traspaso' ? ' class="row--traspaso"' : '') + '>' +
+        '<td class="mono" style="font-size:12px;white-space:nowrap">' + esc(CC.fmt.fechaCorta(m.fecha)) + '</td>' +
+        '<td class="mono" style="font-size:12px;white-space:nowrap">' + esc(m.folio) + '</td>' +
         '<td><div class="cellstack"><span>' + esc(m.concepto) + '</span>' +
-        '<small>' + esc([m.nombre, casa ? 'casa ' + casa.clave : '', m.categoria].filter(Boolean).join(' · ')) + '</small></div></td>' +
-        '<td class="c"><span class="pill pill--flat ' + etiqueta[1] + '">' + etiqueta[0] + '</span></td>' +
-        '<td class="r" style="color:var(--good)">' + (m.tipo !== 'egreso' ? esc(CC.fmt.money2(m.monto)) : '') + '</td>' +
-        '<td class="r" style="color:var(--crit)">' + (m.tipo === 'egreso' ? esc(CC.fmt.money2(m.monto)) : '') + '</td>' +
-        '<td class="r strong">' + esc(CC.fmt.money2(f.saldo)) + '</td>' +
-        '<td class="r noprint" style="white-space:nowrap">' +
-        '<button class="btn btn--sm btn--soft" data-pdfcaja="' + esc(m.id) + '" title="Descargar recibo en PDF">' +
-        CC.ui.icono('imprimir', 'i--sm') + ' Recibo</button> ' +
-        '<button class="iconbtn" data-delcaja="' + esc(m.id) + '" title="Eliminar">' + CC.ui.icono('cerrar', 'i--sm') + '</button>' +
-        '</td></tr>';
+        (m.categoria || m.referencia ? '<small>' + esc([m.categoria, m.referencia].filter(Boolean).join(' · ')) + '</small>' : '') + '</div></td>' +
+        '<td class="r" style="color:var(--good)">' + (m.entra ? esc(CC.fmt.money2(m.entra)) : '') + '</td>' +
+        '<td class="r" style="color:var(--crit)">' + (m.sale ? esc(CC.fmt.money2(m.sale)) : '') + '</td>' +
+        '<td class="r strong">' + esc(CC.fmt.money2(m.saldo)) + '</td>' +
+        '<td class="r noprint">' + accion + '</td></tr>';
     }).join('');
 
-    out.push('<div class="panelbox">' +
-      '<div class="panelbox__head"><h3>Movimientos de ' + esc(CC.fmt.periodo(p)) + '</h3>' +
-      '<span class="eyebrow">' + delMes.length + ' movimientos</span></div>' +
-      (delMes.length
-        ? '<div class="tablewrap"><table class="ledger">' +
-          '<thead><tr><th>Folio</th><th>Concepto</th><th class="c">Tipo</th><th class="r">Entra</th><th class="r">Sale</th>' +
-          '<th class="r">Saldo</th><th class="noprint"></th></tr></thead><tbody>' + filas + '</tbody>' +
-          '<tfoot><tr><td colspan="3">Totales del mes</td>' +
-          '<td class="r">' + esc(CC.fmt.money2(delMes.filter(function (f) { return f.mov.tipo !== 'egreso'; })
-            .reduce(function (a, f) { return a + f.mov.monto; }, 0))) + '</td>' +
-          '<td class="r">' + esc(CC.fmt.money2(egresos)) + '</td><td colspan="2"></td></tr></tfoot>' +
-          '</table></div>'
-        : '<div class="empty"><strong>Sin movimientos en ' + esc(CC.fmt.periodo(p)) + '</strong>' +
-          '<p>Cuando le pagues a los de la basura o recibas efectivo, captúralo aquí: el recibo sale solo.</p>' +
-          '<button class="btn" data-accion="egreso" style="margin-top:8px">Registrar un egreso</button></div>') +
-      '</div>');
+    out.push('<div class="panelbox"><div class="panelbox__head"><h3>' + esc(c.nombre) + ' · ' + esc(CC.fmt.periodo(p)) + '</h3>' +
+      '<div class="chips noprint"><button class="chip" data-accion="exportar">Exportar a Excel</button>' +
+      '<button class="chip" data-accion="saldos">Saldos iniciales</button></div></div>' +
+      '<div class="tablewrap"><table class="ledger"><thead><tr><th>Fecha</th><th>Folio</th><th>Concepto</th>' +
+      '<th class="r">Entra</th><th class="r">Sale</th><th class="r">Saldo</th><th class="noprint"></th></tr></thead><tbody>' +
+      '<tr class="ledger__grupo"><td colspan="5">Saldo al empezar el mes</td><td class="r">' + esc(CC.fmt.money2(e.inicial)) + '</td><td></td></tr>' +
+      (filas || '<tr><td colspan="7"><div class="empty"><strong>Sin movimientos este mes</strong></div></td></tr>') +
+      '</tbody><tfoot><tr><td colspan="3">Saldo al cerrar el mes</td><td class="r">' + esc(CC.fmt.money2(e.entradas)) +
+      '</td><td class="r">' + esc(CC.fmt.money2(e.salidas)) + '</td><td class="r">' + esc(CC.fmt.money2(e.final)) + '</td><td></td></tr></tfoot>' +
+      '</table></div></div>');
+
+    if (c.id === 'caja') {
+      var arq = CC.Store.arqueos().slice(0, 5);
+      out.push('<div class="panelbox"><div class="panelbox__head"><h3>Arqueos de caja</h3>' +
+        '<button class="btn btn--sm btn--soft" data-accion="arqueo">Hacer arqueo</button></div>' +
+        (arq.length ? '<div class="tablewrap"><table class="ledger"><thead><tr><th>Fecha</th><th>Quién</th><th class="r">Debía haber</th>' +
+          '<th class="r">Se contó</th><th class="r">Diferencia</th><th>Nota</th></tr></thead><tbody>' + arq.map(function (a) {
+            return '<tr><td class="mono" style="font-size:12px">' + esc(CC.fmt.fechaCorta(a.fecha)) + '</td><td>' + esc(a.quien || '—') + '</td>' +
+              '<td class="r">' + esc(CC.fmt.money2(a.esperado)) + '</td><td class="r">' + esc(CC.fmt.money2(a.contado)) + '</td>' +
+              '<td class="r strong" style="color:' + (Math.abs(a.diferencia) < 0.01 ? 'var(--good)' : 'var(--crit)') + '">' +
+              esc(Math.abs(a.diferencia) < 0.01 ? 'Cuadra' : CC.fmt.money2(a.diferencia)) + '</td><td class="muted">' + esc(a.nota || '') + '</td></tr>';
+          }).join('') + '</tbody></table></div>'
+          : '<div class="empty"><strong>Sin arqueos</strong><p>Cuando alguien cuente el efectivo, captúralo aquí: el sistema dice si cuadra.</p></div>') +
+        '</div>');
+    } else if (ultimaConciliacion) {
+      out.push('<div class="note"><div>Última conciliación: ' + esc(ultimaConciliacion.archivo) + ' — ' +
+        ultimaConciliacion.r.pares.length + ' cuadran, ' + ultimaConciliacion.r.soloBanco.length + ' faltan en el sistema. ' +
+        '<button type="button" class="btn btn--sm btn--ghost" data-accion="verConciliacion">Ver el resultado</button></div></div>');
+    }
 
     return out.join('');
   },
 
-  montar: function (raiz) {
-    raiz.querySelectorAll('[data-pdfcaja]').forEach(function (b) {
-      b.onclick = function () { CC.Comprobantes.descargar(CC.Comprobantes.reciboCaja(b.getAttribute('data-pdfcaja'))); };
+  montar: function (raiz, ctx, redibujar) {
+    raiz.querySelectorAll('[data-vercuenta]').forEach(function (b) {
+      b.onclick = function () { cuentaVista = b.getAttribute('data-vercuenta'); redibujar(); };
     });
-    raiz.querySelectorAll('[data-delcaja]').forEach(function (b) {
-      b.onclick = function () {
-        var m = CC.Store.movCaja(b.getAttribute('data-delcaja'));
-        CC.ui.confirmar('Eliminar movimiento',
-          'Se borra el movimiento con su firma y su foto, y el saldo de la caja se recalcula.' +
-          (m && m.gastoId ? ' También se quita la reposición de Gastos.' : ''),
-          'Eliminar', function () {
-            CC.Store.borrarMovCaja(m.id);
-            CC.ui.toast('Movimiento eliminado');
-          }, true);
-      };
+    raiz.querySelectorAll('[data-tras]').forEach(function (b) {
+      b.onclick = function () { formularioTraspaso(CC.Store.traspaso(b.getAttribute('data-tras'))); };
+    });
+    raiz.querySelectorAll('[data-egreso]').forEach(function (b) {
+      b.onclick = function () { CC.vistas.gastos.editar(b.getAttribute('data-egreso')); };
+    });
+    raiz.querySelectorAll('[data-ing]').forEach(function (b) {
+      b.onclick = function () { CC.Comprobantes.descargar(CC.Comprobantes.reciboIngreso(b.getAttribute('data-ing'))); };
+    });
+    raiz.querySelectorAll('[data-pago]').forEach(function (b) {
+      b.onclick = function () { CC.Comprobantes.descargar(CC.Comprobantes.reciboPago(b.getAttribute('data-pago'))); };
     });
   },
 
-  egreso: function () { formularioCaja('egreso'); },
-  ingreso: function () { formularioCaja('ingreso'); },
-
-  /** Repone el fondo desde la cuenta del condominio; queda como gasto "Caja chica". */
-  reponer: function () {
-    var esc = CC.ui.esc;
-    var k = CC.Model.cajaChica();
-    var falta = Math.max(0, Math.round((k.fondo - k.saldo) * 100) / 100);
-
-    CC.ui.modal('Reponer caja chica',
-      '<p class="field__hint" style="margin-bottom:12px">Hay ' + esc(CC.fmt.money2(k.saldo)) + ' en caja. ' +
-      'Con la reposición vuelve al fondo de ' + esc(CC.fmt.money(k.fondo)) + '. ' +
-      'El dinero sale de la cuenta del condominio y aparece en Gastos.</p>' +
-      '<div class="formgrid">' +
-      '<label class="field"><span class="field__lab">Monto a reponer</span>' +
-      '<input class="input num" id="kMonto" type="number" min="0" step="0.01" value="' + esc(falta.toFixed(2)) + '"></label>' +
-      '<label class="field"><span class="field__lab">Fecha</span>' +
-      '<input class="input" id="kFecha" type="date" value="' + esc(CC.per.hoyISO()) + '"></label>' +
-      '<label class="field"><span class="field__lab">Cómo sale</span>' +
-      '<select class="input" id="kMetodo"><option>Retiro de la cuenta</option><option>Cheque</option><option>Transferencia</option></select></label>' +
-      '</div>' +
-      '<div class="formactions">' +
-      '<button type="button" class="btn btn--ghost" id="kCancel">Cancelar</button>' +
-      '<button type="button" class="btn" id="kOk">Reponer</button></div>',
-      function (cuerpo) {
-        cuerpo.querySelector('#kCancel').onclick = CC.ui.cerrarModal;
-        cuerpo.querySelector('#kOk').onclick = function () {
-          var monto = Number(cuerpo.querySelector('#kMonto').value);
-          if (!(monto > 0)) { CC.ui.toast('Captura un monto mayor a cero', 'crit'); return; }
-          var fecha = cuerpo.querySelector('#kFecha').value || CC.per.hoyISO();
-          var metodo = cuerpo.querySelector('#kMetodo').value;
-          var g = CC.Store.agregarGasto({
-            periodo: CC.per.de(fecha), fecha: fecha, categoria: 'Caja chica',
-            proveedor: 'Reposición de fondo', concepto: 'Reposición de caja chica',
-            monto: monto, estado: 'pagado', metodo: metodo, folio: ''
-          });
-          CC.Store.agregarMovCaja({
-            tipo: 'reposicion', fecha: fecha, periodo: CC.per.de(fecha),
-            concepto: 'Reposición de caja chica', categoria: '', nombre: '',
-            monto: monto, metodo: metodo, gastoId: g.id, nota: ''
-          });
-          CC.ui.cerrarModal();
-          CC.ui.toast('Caja repuesta con ' + CC.fmt.money2(monto), 'good');
-        };
-      });
+  traspaso: function () { formularioTraspaso(null); },
+  ingreso: function () { formularioIngreso(); },
+  arqueo: function () { formularioArqueo(); },
+  saldos: function () { formularioSaldos(); },
+  conciliar: function () { conciliacion(); },
+  verConciliacion: function () { resultado(); },
+  exportar: function (ctx) {
+    var c = CC.Store.cuenta(cuentaVista);
+    var e = CC.Model.estadoCuentaBanco(cuentaVista, ctx.periodo);
+    CC.ui.descargarCSV(c.nombre + ' ' + CC.fmt.periodo(ctx.periodo), ['Fecha', 'Folio', 'Concepto', 'Referencia', 'Entra', 'Sale', 'Saldo'],
+      [['', '', 'Saldo al empezar el mes', '', '', '', e.inicial]].concat(e.filas.map(function (m) {
+        return [m.fecha, m.folio, m.concepto, m.referencia || '', m.entra || '', m.sale || '', m.saldo];
+      })));
   }
 };

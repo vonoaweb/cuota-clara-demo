@@ -31,7 +31,7 @@ var PLANTILLAS = {
   cobranza: {
     nombre: 'Recordatorio de cuota',
     asunto: 'Recordatorio de cuota — {condominio}',
-    cuerpo: 'Estimados vecinos:\n\nLes recordamos que la cuota de mantenimiento de {periodo} vence el día {vencimiento}. Después de esa fecha se genera un recargo de {mora}% mensual sobre el saldo vencido.\n\nPueden pagar por transferencia a:\n{cuenta}\n\nPor favor envíen su comprobante para aplicarlo el mismo día. Si ya realizaron su pago, hagan caso omiso de este mensaje.\n\n{administrador}\n{condominio}'
+    cuerpo: 'Estimados vecinos:\n\nLes recordamos que la cuota de mantenimiento de {periodo} vence el día {vencimiento}. Les recordamos que {recargo}.\n\nPueden pagar por transferencia a:\n{cuenta}\n\nPor favor envíen su comprobante para aplicarlo el mismo día. Si ya realizaron su pago, hagan caso omiso de este mensaje.\n\n{administrador}\n{condominio}'
   },
   corte: {
     nombre: 'Corte de servicio o mantenimiento',
@@ -41,7 +41,7 @@ var PLANTILLAS = {
 };
 
 /* Estado de pantalla: no se guarda, es la redaccion en curso. */
-var borrador = { grupo: 'todos', plantilla: 'aviso', asunto: null, cuerpo: null };
+var borrador = { grupo: 'todos', aQuien: 'propietarios', plantilla: 'aviso', asunto: null, cuerpo: null };
 
 function destinatarios(grupo, periodo) {
   return CC.Model.padron(periodo).filter(function (x) {
@@ -51,13 +51,29 @@ function destinatarios(grupo, periodo) {
   });
 }
 
-function correosDe(lista) {
+var A_QUIEN = [['propietarios', 'Propietarios'], ['arrendatarios', 'Arrendatarios'], ['ambos', 'Los dos']];
+
+/** Los correos de la lista: del propietario, del arrendatario o de los dos. */
+function correosDe(lista, aQuien) {
+  aQuien = aQuien || borrador.aQuien || 'propietarios';
   var vistos = {};
   lista.forEach(function (x) {
-    var c = (x.unidad.email || '').trim();
-    if (c && c.indexOf('@') > 0) vistos[c.toLowerCase()] = 1;
+    var u = x.unidad;
+    var cs = aQuien === 'propietarios' ? [u.email]
+      : aQuien === 'arrendatarios' ? [u.inquilino ? u.emailInquilino : '']
+        : [u.email, u.inquilino ? u.emailInquilino : ''];
+    cs.forEach(function (c) {
+      c = (c || '').trim();
+      if (c && c.indexOf('@') > 0) vistos[c.toLowerCase()] = 1;
+    });
   });
   return Object.keys(vistos);
+}
+
+/** Casas de la lista a las que no les llega: no tienen el correo que se eligió. */
+function sinCorreoDe(lista, aQuien) {
+  return lista.filter(function (x) { return !correosDe([x], aQuien).length; })
+    .filter(function (x) { return aQuien !== 'arrendatarios' || x.unidad.inquilino; });
 }
 
 /** Sustituye las llaves de la plantilla por los datos reales del condominio. */
@@ -69,6 +85,7 @@ function rellenar(texto, periodo) {
     .replace(/\{periodo\}/g, CC.fmt.periodo(periodo))
     .replace(/\{vencimiento\}/g, c.diaVencimiento)
     .replace(/\{mora\}/g, c.tasaMoraMensual)
+    .replace(/\{recargo\}/g, CC.Model.textoRecargo())
     .replace(/\{cuenta\}/g, c.cuenta || '[capturar la cuenta en Ajustes]');
 }
 
@@ -93,9 +110,8 @@ CC.vistas.difusion = {
 
     var elegidos = destinatarios(borrador.grupo, ctx.periodo);
     var correos = correosDe(elegidos);
-    var sinCorreo = elegidos.filter(function (x) {
-      return !(x.unidad.email || '').trim();
-    });
+    if (borrador.aQuien === 'arrendatarios') elegidos = elegidos.filter(function (x) { return x.unidad.inquilino; });
+    var sinCorreo = sinCorreoDe(elegidos, borrador.aQuien);
 
     var plantilla = PLANTILLAS[borrador.plantilla];
     var asunto = borrador.asunto !== null ? borrador.asunto : rellenar(plantilla.asunto, ctx.periodo);
@@ -117,6 +133,10 @@ CC.vistas.difusion = {
       '<div class="chips">' + GRUPOS.map(function (g) {
         return '<button class="chip' + (borrador.grupo === g[0] ? ' is-on' : '') + '" data-grupo="' + g[0] + '">' +
           esc(g[1]) + '</button>';
+      }).join('') + '</div>' +
+      '<div class="chips"><span class="field__lab" style="align-self:center;margin-right:4px">Les llega a</span>' +
+      A_QUIEN.map(function (a) {
+        return '<button class="chip' + (borrador.aQuien === a[0] ? ' is-on' : '') + '" data-aquien="' + a[0] + '">' + esc(a[1]) + '</button>';
       }).join('') + '</div>' +
       (sinCorreo.length
         ? '<div class="note note--demo"><div><strong>' + sinCorreo.length +
@@ -216,6 +236,14 @@ CC.vistas.difusion = {
       };
     });
 
+    raiz.querySelectorAll('[data-aquien]').forEach(function (b) {
+      b.onclick = function () {
+        guardarBorrador();
+        borrador.aQuien = b.getAttribute('data-aquien');
+        redibujar();
+      };
+    });
+
     raiz.querySelectorAll('[data-plantilla]').forEach(function (b) {
       b.onclick = function () {
         borrador.plantilla = b.getAttribute('data-plantilla');
@@ -226,7 +254,7 @@ CC.vistas.difusion = {
     });
 
     var elegidos = destinatarios(borrador.grupo, ctx.periodo);
-    var correos = correosDe(elegidos);
+    var correos = correosDe(elegidos, borrador.aQuien);
 
     var abrir = raiz.querySelector('#dAbrir');
     if (abrir) abrir.onclick = function () {
@@ -259,11 +287,12 @@ CC.vistas.difusion = {
     if (registrar) registrar.onclick = function () {
       if (!inAsunto.value.trim()) { CC.ui.toast('Ponle asunto antes de anotarlo', 'crit'); return; }
       var g = GRUPOS.filter(function (x) { return x[0] === borrador.grupo; })[0];
+      var aq = A_QUIEN.filter(function (x) { return x[0] === borrador.aQuien; })[0];
       CC.Store.agregarDifusion({
         asunto: inAsunto.value.trim(),
         cuerpo: inCuerpo.value,
         grupo: borrador.grupo,
-        grupoNombre: g ? g[1] : '',
+        grupoNombre: (g ? g[1] : '') + (aq ? ' · ' + aq[1].toLowerCase() : ''),
         destinatarios: correos.length,
         periodo: ctx.periodo
       });

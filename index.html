@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!--ARTIFACT:HEAD-START-->
-<title>Cuota Clara</title>
+<title>Condominio Mallorca · Cuota Clara</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@600;700&display=swap">
-<link rel="stylesheet" href="css/app.css?v=2026102602">
+<link rel="stylesheet" href="css/app.css?v=2026102803">
 <!--ARTIFACT:HEAD-END-->
 </head>
 <body>
@@ -34,6 +34,8 @@
   <symbol id="i-volver" viewBox="0 0 24 24"><path d="M10 6 4 12l6 6"/><path d="M4 12h16"/></symbol>
   <symbol id="i-adeudos" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
   <symbol id="i-caja" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M8 7V5.5A1.5 1.5 0 0 1 9.5 4h5A1.5 1.5 0 0 1 16 5.5V7"/><path d="M3 12h18"/><path d="M11 12v2h2v-2"/></symbol>
+  <symbol id="i-reservas" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M5.2 7.6c3 1.4 3 7.4 0 8.8M18.8 7.6c-3 1.4-3 7.4 0 8.8"/></symbol>
+  <symbol id="i-visitas" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 19.5a6 6 0 0 1 12 0"/><path d="M16 11h5M18.5 8.5v5"/></symbol>
   <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
   <symbol id="i-tema" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.2 5.2l1.4 1.4M17.4 17.4l1.4 1.4M18.8 5.2l-1.4 1.4M6.6 17.4l-1.4 1.4"/></symbol>
 </svg>
@@ -54,9 +56,11 @@
       <a class="nav__item" data-route="unidades" href="#/unidades"><svg class="i"><use href="#i-unidades"/></svg><span>Casas</span></a>
       <a class="nav__item" data-route="cobranza" href="#/cobranza"><svg class="i"><use href="#i-cobranza"/></svg><span>Cobranza</span></a>
       <a class="nav__item" data-route="adeudos" href="#/adeudos"><svg class="i"><use href="#i-adeudos"/></svg><span>Adeudos</span><em class="nav__badge" id="badgeMorosos" hidden></em></a>
-      <a class="nav__item" data-route="gastos" href="#/gastos"><svg class="i"><use href="#i-gastos"/></svg><span>Gastos</span></a>
-      <a class="nav__item" data-route="caja" href="#/caja"><svg class="i"><use href="#i-caja"/></svg><span>Caja chica</span></a>
-      <a class="nav__item" data-route="recibos" href="#/recibos"><svg class="i"><use href="#i-recibos"/></svg><span>Recibos</span></a>
+      <a class="nav__item" data-route="gastos" href="#/gastos"><svg class="i"><use href="#i-gastos"/></svg><span>Egresos</span></a>
+      <a class="nav__item" data-route="caja" href="#/caja"><svg class="i"><use href="#i-caja"/></svg><span>Banco y caja</span></a>
+      <a class="nav__item" data-route="reservas" href="#/reservas" hidden><svg class="i"><use href="#i-reservas"/></svg><span>Reservas</span></a>
+      <a class="nav__item" data-route="visitas" href="#/visitas" hidden><svg class="i"><use href="#i-visitas"/></svg><span>Visitas</span></a>
+      <a class="nav__item" data-route="recibos" href="#/recibos"><svg class="i"><use href="#i-recibos"/></svg><span>Recibos firmados</span></a>
       <a class="nav__item" data-route="difusion" href="#/difusion"><svg class="i"><use href="#i-difusion"/></svg><span>Difusión</span></a>
       <a class="nav__item" data-route="reportes" href="#/reportes"><svg class="i"><use href="#i-reportes"/></svg><span>Reportes</span></a>
       <a class="nav__item" data-route="reglamento" href="#/reglamento"><svg class="i"><use href="#i-reglamento"/></svg><span>Reglamento</span></a>
@@ -123,28 +127,33 @@
 
 <div class="toasts" id="toasts" aria-live="polite"></div>
 
-<script src="js/format.js?v=2026102602"></script>
-<script src="js/archivos.js?v=2026102602"></script>
-<script src="js/pdf.js?v=2026102602"></script>
-<script src="js/store.js?v=2026102602"></script>
-<script src="js/seed.js?v=2026102602"></script>
-<script src="js/model.js?v=2026102602"></script>
-<script src="js/ui.js?v=2026102602"></script>
-<script src="js/comprobantes.js?v=2026102602"></script>
-<script src="js/views/panel.js?v=2026102602"></script>
-<script src="js/views/unidades.js?v=2026102602"></script>
-<script src="js/views/cobranza.js?v=2026102602"></script>
-<script src="js/views/adeudos.js?v=2026102602"></script>
-<script src="js/views/gastos.js?v=2026102602"></script>
-<script src="js/views/caja.js?v=2026102602"></script>
-<script src="js/views/recibos.js?v=2026102602"></script>
-<script src="js/views/difusion.js?v=2026102602"></script>
-<script src="js/views/reglamento.js?v=2026102602"></script>
-<script src="js/views/reportes.js?v=2026102602"></script>
-<script src="js/views/avisos.js?v=2026102602"></script>
-<script src="js/views/ajustes.js?v=2026102602"></script>
-<script src="js/views/portal.js?v=2026102602"></script>
-<script src="js/app.js?v=2026102602"></script>
+<script src="js/format.js?v=2026102803"></script>
+<script src="js/perfil.js?v=2026102803"></script>
+<script src="js/archivos.js?v=2026102803"></script>
+<script src="js/pdf.js?v=2026102803"></script>
+<script src="js/store.js?v=2026102803"></script>
+<script src="js/escritorio.js?v=2026102803"></script>
+<script src="js/seed.js?v=2026102803"></script>
+<script src="js/model.js?v=2026102803"></script>
+<script src="js/ui.js?v=2026102803"></script>
+<script src="js/importar.js?v=2026102803"></script>
+<script src="js/comprobantes.js?v=2026102803"></script>
+<script src="js/views/panel.js?v=2026102803"></script>
+<script src="js/views/unidades.js?v=2026102803"></script>
+<script src="js/views/cobranza.js?v=2026102803"></script>
+<script src="js/views/adeudos.js?v=2026102803"></script>
+<script src="js/views/gastos.js?v=2026102803"></script>
+<script src="js/views/caja.js?v=2026102803"></script>
+<script src="js/views/reservas.js?v=2026102803"></script>
+<script src="js/views/visitas.js?v=2026102803"></script>
+<script src="js/views/recibos.js?v=2026102803"></script>
+<script src="js/views/difusion.js?v=2026102803"></script>
+<script src="js/views/reglamento.js?v=2026102803"></script>
+<script src="js/views/reportes.js?v=2026102803"></script>
+<script src="js/views/avisos.js?v=2026102803"></script>
+<script src="js/views/ajustes.js?v=2026102803"></script>
+<script src="js/views/portal.js?v=2026102803"></script>
+<script src="js/app.js?v=2026102803"></script>
 <!--ARTIFACT:BODY-END-->
 </body>
 </html>

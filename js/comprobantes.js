@@ -190,95 +190,82 @@ CC.Comprobantes = (function () {
     });
   }
 
-  function reciboCaja(movId) {
-    var m = CC.Store.movCaja(movId);
-    if (!m) return Promise.reject(new Error('No se encontró el movimiento.'));
+  function cuentaNombre(id) { var c = CC.Store.cuenta(id || 'banco'); return c ? c.nombre : 'Banco'; }
+
+  /** Recibo de un egreso: lo firma quien recibe el dinero (el jardinero, el de la basura). */
+  function reciboEgreso(gastoId) {
+    var g = CC.Store.gasto(gastoId);
+    if (!g) return Promise.reject(new Error('No se encontró el egreso.'));
     var c = CC.Store.condominio();
-    var fol = folio('C-', m.folio);
-    var casa = m.unidadId ? CC.Store.unidad(m.unidadId) : null;
-    var opcFirma = { ladoMax: 640, escalaMax: 3 };
-    var opcFoto = { ladoMax: 700 };
-
-    if (m.tipo === 'egreso') {
-      return reciboSimple({
-        tipo: 'Recibo de egreso · Caja chica', folio: fol, fecha: m.fecha,
-        titulo: 'Recibo ' + fol + ' · ' + m.concepto,
-        archivo: 'Recibo ' + fol + ' ' + m.concepto,
-        filas: [
-          ['Recibí de', c.nombre, { negrita: true }],
-          ['La cantidad de', CC.fmt.letras(m.monto), { tam: 8.5, despues: 8 }],
-          ['Por concepto de', m.concepto, { negrita: true }],
-          ['Categoría', m.categoria],
-          ['Identificación', m.identificacion, { tam: 9 }],
-          ['Nota', m.nota, { tam: 9 }]
-        ],
-        totalEtiqueta: 'Cantidad entregada', monto: m.monto,
-        firmaImg: imagen(m.firmaId, m.firmaInline, opcFirma),
-        fotoImg: m.fotoId ? imagen(m.fotoId, null, opcFoto) : null,
-        firmaIzq: { rol: 'Entregó por la administración', nombre: c.administrador || 'Administración' },
-        firmaDer: { rol: 'Recibí conforme', nombre: m.nombre, conImagen: true },
-        pie: 'Comprobante de egreso de caja chica. Generado el ' + CC.fmt.fechaCorta(CC.per.hoyISO()) + '.'
-      });
-    }
-
-    if (m.tipo === 'ingreso') {
-      return reciboSimple({
-        tipo: 'Recibo de ingreso · Caja chica', folio: fol, fecha: m.fecha,
-        titulo: 'Recibo ' + fol + ' · ' + m.concepto,
-        archivo: 'Recibo ' + fol + ' ' + m.concepto,
-        filas: [
-          ['Recibimos de', (m.nombre || '') + (casa ? ' · casa ' + casa.clave : ''), { negrita: true }],
-          ['La cantidad de', CC.fmt.letras(m.monto), { tam: 8.5, despues: 8 }],
-          ['Por concepto de', m.concepto, { negrita: true }],
-          ['Categoría', m.categoria],
-          ['Nota', m.nota, { tam: 9 }]
-        ],
-        totalEtiqueta: 'Cantidad recibida', monto: m.monto,
-        firmaImg: imagen(m.firmaId, m.firmaInline, opcFirma),
-        fotoImg: m.fotoId ? imagen(m.fotoId, null, opcFoto) : null,
-        firmaIzq: { rol: 'Entregó', nombre: m.nombre, conImagen: true },
-        firmaDer: { rol: 'Recibió por la administración', nombre: c.administrador || 'Administración' },
-        pie: 'Comprobante de ingreso a caja chica. Generado el ' + CC.fmt.fechaCorta(CC.per.hoyISO()) + '.'
-      });
-    }
-
-    // Reposición: dinero que pasa de la cuenta del condominio a la caja
+    var fol = folio('E-', g.folioE);
     return reciboSimple({
-      tipo: 'Reposición · Caja chica', folio: fol, fecha: m.fecha,
-      titulo: 'Reposición ' + fol, archivo: 'Reposicion de caja chica ' + fol,
+      tipo: 'Recibo de egreso', folio: fol, fecha: g.fecha,
+      titulo: 'Recibo ' + fol + ' · ' + g.concepto,
+      archivo: 'Recibo ' + fol + ' ' + g.concepto,
       filas: [
-        ['Concepto', m.concepto, { negrita: true }],
-        ['La cantidad de', CC.fmt.letras(m.monto), { tam: 8.5, despues: 8 }],
-        ['Forma', m.metodo],
-        ['Nota', m.nota, { tam: 9 }]
+        ['Recibí de', c.nombre, { negrita: true }],
+        ['La cantidad de', CC.fmt.letras(g.monto), { tam: 8.5, despues: 8 }],
+        ['Por concepto de', g.concepto, { negrita: true }],
+        ['Categoría', g.categoria],
+        ['Forma de pago', [g.metodo, cuentaNombre(g.cuenta), g.referencia].filter(Boolean).join(' · ')],
+        ['Identificación', g.identificacion, { tam: 9 }],
+        ['Nota', g.nota, { tam: 9 }]
       ],
-      totalEtiqueta: 'Monto repuesto', monto: m.monto,
-      firmaIzq: { rol: 'Autorizó', nombre: '' },
-      firmaDer: { rol: 'Recibió el fondo', nombre: c.administrador || 'Administración' }
+      totalEtiqueta: 'Cantidad entregada', monto: g.monto,
+      firmaImg: imagen(g.firmaId, g.firmaInline, { ladoMax: 640, escalaMax: 3 }),
+      fotoImg: g.fotoId ? imagen(g.fotoId, null, { ladoMax: 700 }) : null,
+      firmaIzq: { rol: 'Entregó por la administración', nombre: c.administrador || 'Administración' },
+      firmaDer: { rol: 'Recibí conforme', nombre: g.proveedor, conImagen: true },
+      pie: (g.estado === 'cancelado' ? 'CANCELADO' + (g.motivoCancelacion ? ': ' + g.motivoCancelacion : '') + '. ' : '') +
+        'Comprobante de egreso. Generado el ' + CC.fmt.fechaCorta(CC.per.hoyISO()) + '.'
     });
   }
 
-  function reciboProveedor(reciboId) {
-    var r = CC.Store.recibo(reciboId);
-    if (!r) return Promise.reject(new Error('No se encontró el recibo.'));
-    var fol = folio('', r.folio);
+  /** Recibo de un ingreso que no es cuota (tarjeta de acceso, multa en efectivo). */
+  function reciboIngreso(ingresoId) {
+    var i = CC.Store.ingreso(ingresoId);
+    if (!i) return Promise.reject(new Error('No se encontró el ingreso.'));
+    var c = CC.Store.condominio();
+    var casa = i.unidadId ? CC.Store.unidad(i.unidadId) : null;
+    var fol = folio('I-', i.folio);
     return reciboSimple({
-      tipo: 'Recibo de pago', folio: fol, fecha: r.fecha,
-      titulo: 'Recibo ' + fol + ' · ' + r.nombre,
-      archivo: 'Recibo ' + fol + ' ' + r.nombre,
+      tipo: 'Recibo de ingreso', folio: fol, fecha: i.fecha,
+      titulo: 'Recibo ' + fol + ' · ' + i.concepto,
+      archivo: 'Recibo ' + fol + ' ' + i.concepto,
       filas: [
-        ['Recibí de', r.recibeDe || CC.Store.condominio().nombre, { negrita: true }],
-        ['La cantidad de', CC.fmt.letras(r.monto), { tam: 8.5, despues: 8 }],
-        ['Por concepto de', r.concepto, { negrita: true }],
-        ['Servicio', r.categoria],
-        ['Forma de pago', r.metodo],
-        ['Identificación', r.identificacion, { tam: 9 }]
+        ['Recibimos de', (i.nombre || '') + (casa ? ' · casa ' + casa.clave : ''), { negrita: true }],
+        ['La cantidad de', CC.fmt.letras(i.monto), { tam: 8.5, despues: 8 }],
+        ['Por concepto de', i.concepto, { negrita: true }],
+        ['Forma de pago', [i.metodo, cuentaNombre(i.cuenta), i.referencia].filter(Boolean).join(' · ')],
+        ['Nota', i.nota, { tam: 9 }]
       ],
-      totalEtiqueta: 'Cantidad recibida', monto: r.monto,
-      firmaImg: imagen(r.firmaId, r.firmaInline, { ladoMax: 640, escalaMax: 3 }),
-      fotoImg: r.fotoId ? imagen(r.fotoId, null, { ladoMax: 700 }) : null,
-      firmaIzq: { rol: 'Entregó por la administración', nombre: CC.Store.condominio().administrador || 'Administración' },
-      firmaDer: { rol: 'Recibí conforme', nombre: r.nombre, conImagen: true }
+      totalEtiqueta: 'Cantidad recibida', monto: i.monto,
+      firmaImg: imagen(i.firmaId, i.firmaInline, { ladoMax: 640, escalaMax: 3 }),
+      firmaIzq: { rol: 'Entregó', nombre: i.nombre, conImagen: true },
+      firmaDer: { rol: 'Recibió por la administración', nombre: c.administrador || 'Administración' }
+    });
+  }
+
+  /** Póliza de traspaso: el depósito del efectivo de la caja al banco, con su ficha. */
+  function polizaTraspaso(traspasoId) {
+    var t = CC.Store.traspaso(traspasoId);
+    if (!t) return Promise.reject(new Error('No se encontró el traspaso.'));
+    var c = CC.Store.condominio();
+    var fol = folio('T-', t.folio);
+    return reciboSimple({
+      tipo: 'Póliza de traspaso', folio: fol, fecha: t.fecha,
+      titulo: 'Traspaso ' + fol, archivo: 'Poliza de traspaso ' + fol,
+      filas: [
+        ['De la cuenta', cuentaNombre(t.de), { negrita: true }],
+        ['A la cuenta', cuentaNombre(t.a), { negrita: true }],
+        ['La cantidad de', CC.fmt.letras(t.monto), { tam: 8.5, despues: 8 }],
+        ['Ficha o referencia', t.referencia],
+        ['Nota', t.nota, { tam: 9 }]
+      ],
+      totalEtiqueta: 'Monto traspasado', monto: t.monto,
+      firmaIzq: { rol: 'Hizo el traspaso', nombre: c.administrador || 'Administración' },
+      firmaDer: { rol: 'Revisó', nombre: '' },
+      pie: (t.cancelado ? 'CANCELADO. ' : '') + 'Póliza de traspaso entre cuentas. Generada el ' + CC.fmt.fechaCorta(CC.per.hoyISO()) + '.'
     });
   }
 
@@ -352,6 +339,95 @@ CC.Comprobantes = (function () {
     return Promise.resolve({ doc: doc, nombre: CC.PDF.nombreArchivo('Convenio ' + fol + ' Casa ' + u.clave) });
   }
 
+  /* ---------- Estado de cuenta de una casa (carta) ---------- */
+
+  /** Lo que se le manda al vecino: de tal mes a tal mes, con cada cargo y cada pago. */
+  function estadoCuenta(unidadId, desde, hasta) {
+    var u = CC.Store.unidad(unidadId);
+    if (!u) return Promise.reject(new Error('No se encontró la casa.'));
+    var c = CC.Store.condominio();
+    var e = CC.Model.estadoCuentaCasa(unidadId, desde, hasta);
+    var titulo = 'Estado de cuenta · Casa ' + u.clave;
+    var doc = CC.PDF.nuevo({ titulo: titulo });
+    var ancho = doc.ancho - 2 * M;
+    var LIMITE = doc.alto - 56;
+    var rango = desde === hasta ? CC.fmt.periodo(desde) : CC.fmt.periodo(desde) + ' a ' + CC.fmt.periodo(hasta);
+
+    var y = encabezado(doc, 'Estado de cuenta', 'Casa ' + u.clave, CC.per.hoyISO()) + 30;
+    doc.texto(u.propietario || '', M, y, { tam: 14, negrita: true, color: TINTA });
+    y += 16;
+    doc.texto(rango + (u.referencia ? ' · referencia bancaria ' + u.referencia : ''), M, y, { tam: 9.5, color: GRIS });
+    y += 22;
+
+    function cabecera() {
+      doc.rect(M, y, ancho, 20, { relleno: SUAVE });
+      var o = { tam: 7.2, negrita: true, color: ACENTO };
+      doc.texto('FECHA', M + 8, y + 13, o);
+      doc.texto('CONCEPTO', M + 70, y + 13, o);
+      doc.texto('CARGO', M + 370, y + 13, Object.assign({ alinear: 'der' }, o));
+      doc.texto('ABONO', M + 445, y + 13, Object.assign({ alinear: 'der' }, o));
+      doc.texto('SALDO', M + ancho - 8, y + 13, Object.assign({ alinear: 'der' }, o));
+      y += 20;
+    }
+    cabecera();
+    doc.texto('Saldo anterior', M + 70, y + 13, { tam: 9, negrita: true, color: TINTA });
+    doc.texto(CC.fmt.money2(e.inicial), M + ancho - 8, y + 13, { tam: 9, negrita: true, color: TINTA, alinear: 'der' });
+    doc.linea(M, y + 19, M + ancho, y + 19, { grosor: 0.4, color: LINEA });
+    y += 19;
+    e.filas.forEach(function (m) {
+      if (y + 18 > LIMITE) { doc.nuevaPagina(); y = M + 10; cabecera(); }
+      doc.texto(CC.fmt.fechaCorta(m.fecha), M + 8, y + 12, { tam: 8.5, color: TINTA2 });
+      doc.texto(recortar(doc, m.concepto, 245, { tam: 8.5 }), M + 70, y + 12, { tam: 8.5, color: TINTA });
+      if (m.cargo) doc.texto(CC.fmt.money2(m.cargo), M + 370, y + 12, { tam: 8.5, color: TINTA, alinear: 'der' });
+      if (m.abono) doc.texto(CC.fmt.money2(m.abono), M + 445, y + 12, { tam: 8.5, color: BIEN, alinear: 'der' });
+      doc.texto(CC.fmt.money2(m.saldo), M + ancho - 8, y + 12, { tam: 8.5, negrita: true, color: TINTA, alinear: 'der' });
+      doc.linea(M, y + 17, M + ancho, y + 17, { grosor: 0.3, color: LINEA });
+      y += 17;
+    });
+    y += 10;
+    if (y + 90 > LIMITE) { doc.nuevaPagina(); y = M + 20; }
+    doc.rect(M + ancho - 200, y, 200, 46, { relleno: e.final > 0.005 ? '#F7E2E0' : SUAVE, radio: 6 });
+    doc.texto(e.final > 0.005 ? 'SALDO POR PAGAR' : e.final < -0.005 ? 'SALDO A FAVOR' : 'AL CORRIENTE',
+      M + ancho - 188, y + 15, { tam: 7, negrita: true, color: e.final > 0.005 ? MAL : ACENTO });
+    doc.texto(CC.fmt.money2(Math.abs(e.final)), M + ancho - 12, y + 36, { tam: 16, negrita: true, color: TINTA, alinear: 'der' });
+
+    if (e.pendientes.length) {
+      doc.texto('LO QUE QUEDA PENDIENTE', M, y + 12, { tam: 7, negrita: true, color: GRIS });
+      var yy = y + 26;
+      e.pendientes.forEach(function (p) {
+        if (yy > LIMITE) return;
+        doc.texto(CC.fmt.periodo(p.periodo) + ': ' + CC.fmt.money2(p.total) +
+          (p.partes.length > 1 ? '  (' + p.partes.map(function (x) { return x.etiqueta + ' ' + CC.fmt.money2(x.monto); }).join(' + ') + ')' : ''),
+          M, yy, { tam: 8.5, color: TINTA2 });
+        yy += 12;
+      });
+      y = Math.max(y + 56, yy + 6);
+    } else y += 56;
+    if (c.cuenta && y + 30 < LIMITE) {
+      doc.parrafo('Puede pagar por transferencia a ' + c.cuenta + (u.referencia ? ', con la referencia ' + u.referencia : '') + '.',
+        M, y + 8, ancho, { tam: 9, color: TINTA2 });
+    }
+    pie(doc, 'Estado de cuenta de la casa ' + u.clave + ' · generado el ' + CC.fmt.fechaCorta(CC.per.hoyISO()) + '.');
+    return Promise.resolve({ doc: doc, nombre: CC.PDF.nombreArchivo('Estado de cuenta Casa ' + u.clave + ' ' + rango) });
+  }
+
+  /** El mensaje que acompaña al estado de cuenta en WhatsApp. */
+  function textoEstadoCuenta(unidadId, desde, hasta) {
+    var u = CC.Store.unidad(unidadId) || {};
+    var c = CC.Store.condominio();
+    var e = CC.Model.estadoCuentaCasa(unidadId, desde, hasta);
+    var quien = (u.propietario || '').split(' ')[0];
+    var l = ['Hola ' + quien + ', le compartimos el estado de cuenta de la casa ' + u.clave + ' (' +
+      (desde === hasta ? CC.fmt.periodo(desde) : CC.fmt.periodo(desde) + ' a ' + CC.fmt.periodo(hasta)) + ').', ''];
+    if (e.pendientes.length) {
+      l.push('Pendiente:');
+      e.pendientes.forEach(function (p) { l.push('• ' + CC.fmt.periodo(p.periodo) + ': ' + CC.fmt.money2(p.total)); });
+      l.push('Total: ' + CC.fmt.money2(e.final));
+    } else l.push(e.final < -0.005 ? 'Tiene ' + CC.fmt.money2(-e.final) + ' a favor.' : 'Está al corriente. ¡Gracias!');
+    l.push('', (c.administrador || 'La administración') + ', ' + c.nombre + '.');
+    return l.join('\n');
+  }
+
   /* ---------- Salida ---------- */
 
   function descargar(promesa, silencioso) {
@@ -399,8 +475,11 @@ CC.Comprobantes = (function () {
     folio: folio,
     reciboPago: reciboPago,
     textoReciboPago: textoReciboPago,
-    reciboCaja: reciboCaja,
-    reciboProveedor: reciboProveedor,
+    reciboEgreso: reciboEgreso,
+    reciboIngreso: reciboIngreso,
+    polizaTraspaso: polizaTraspaso,
+    estadoCuenta: estadoCuenta,
+    textoEstadoCuenta: textoEstadoCuenta,
     convenio: convenio,
     descargar: descargar,
     compartir: compartir,
