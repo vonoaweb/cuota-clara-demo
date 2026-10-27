@@ -212,7 +212,7 @@ CC.vistas.unidades = {
       }
 
       var clase = s.estado === 'moroso' ? 'row--crit' : s.estado === 'vencido' ? 'row--warn' : '';
-      return encabezado + '<tr class="' + clase + '">' +
+      return encabezado + '<tr class="' + clase + ' fila-clic" data-casa="' + esc(u.id) + '" title="Ver la casa">' +
         '<td><a href="#/unidad/' + esc(u.id) + '" class="strong">' + esc(u.clave) + '</a>' +
         (u.prototipo ? '<div class="muted" style="font-size:11px">Tipo ' + esc(u.prototipo) + ' · ' + esc(u.m2) + ' m²</div>' : '') +
         '</td>' +
@@ -304,7 +304,10 @@ CC.vistas.unidad = {
   acciones: function (ctx) {
     if (!CC.Store.unidad(ctx.param)) return [];
     var s = CC.Model.situacion(ctx.param, ctx.periodo);
-    var lista = [{ texto: 'Registrar pago', icono: 'mas', clase: 'btn', accion: 'pagoUnidad' }];
+    var lista = [
+      { texto: 'Registrar pago', icono: 'mas', clase: 'btn', accion: 'pagoUnidad' },
+      { texto: 'Cargo extra', icono: 'mas', clase: 'btn btn--ghost', accion: 'cargoExtra' }
+    ];
     if (s.saldo > 0.005) {
       lista.push({ texto: 'Avisar adeudo', icono: 'wa', clase: 'btn btn--ghost', accion: 'recordatorio' });
       lista.push({ texto: CC.Model.convenioDe(ctx.param) ? 'Convenio' : 'Hacer convenio', icono: 'recibos', clase: 'btn btn--ghost', accion: 'convenio' });
@@ -597,6 +600,55 @@ CC.vistas.unidad = {
   pagoUnidad: function (ctx) { CC.vistas.cobranza.formularioPago(ctx.param, ctx.periodo); },
   editar: function (ctx) { formularioUnidad(CC.Store.unidad(ctx.param)); },
   imprimir: function () { window.print(); },
+
+  /** Un cargo que no es la cuota (la renta de la casa club, una multa) va al estado de cuenta de la casa. */
+  cargoExtra: function (ctx) {
+    var esc = CC.ui.esc;
+    var u = CC.Store.unidad(ctx.param);
+    if (!u) return;
+    var TIPOS = [['casaclub', 'Renta de la casa club'], ['multa', 'Multa'], ['otro', 'Otro cargo']];
+    var meses = CC.Model.periodos().slice();
+    if (meses.indexOf(ctx.periodo) < 0) meses.push(ctx.periodo);
+    meses.sort().reverse();
+    CC.ui.modal('Cargo extra — casa ' + u.clave,
+      '<div class="formgrid">' +
+      '<label class="field"><span class="field__lab">Qué es</span><select class="input" id="xTipo">' +
+      TIPOS.map(function (t) { return '<option value="' + t[0] + '">' + esc(t[1]) + '</option>'; }).join('') + '</select></label>' +
+      '<label class="field"><span class="field__lab">Monto</span><input class="input num" id="xMonto" type="number" min="0" step="0.01"></label>' +
+      '<label class="field" style="grid-column:1/-1"><span class="field__lab">Concepto (así sale en su estado de cuenta)</span>' +
+      '<input class="input" id="xConcepto" value="Renta de la casa club"></label>' +
+      '<label class="field"><span class="field__lab">Mes</span><select class="input" id="xMes">' +
+      meses.map(function (p) { return '<option value="' + p + '"' + (p === ctx.periodo ? ' selected' : '') + '>' + esc(CC.fmt.periodo(p)) + '</option>'; }).join('') +
+      '</select></label>' +
+      '<label class="field"><span class="field__lab">Vence</span><input class="input" id="xVence" type="date" value="' + esc(CC.per.hoyISO()) + '"></label>' +
+      '</div>' +
+      '<div class="formactions">' +
+      '<button type="button" class="btn btn--ghost" id="xCerrar">Cancelar</button>' +
+      '<button type="button" class="btn" id="xOk">Cargar a la casa</button></div>',
+      function (cuerpo) {
+        var q = function (id) { return cuerpo.querySelector('#' + id); };
+        var sugerido = { casaclub: 'Renta de la casa club', multa: 'Multa', otro: '' };
+        q('xTipo').onchange = function () {
+          var actual = q('xConcepto').value.trim();
+          var esSugerido = Object.keys(sugerido).some(function (k) { return sugerido[k] === actual; });
+          if (!actual || esSugerido) q('xConcepto').value = sugerido[q('xTipo').value];
+          q('xConcepto').focus();
+        };
+        q('xCerrar').onclick = CC.ui.cerrarModal;
+        q('xOk').onclick = function () {
+          var monto = Number(q('xMonto').value);
+          var concepto = q('xConcepto').value.trim();
+          if (!(monto > 0)) { CC.ui.toast('Escribe el monto', 'crit'); return; }
+          if (!concepto) { CC.ui.toast('Escribe el concepto', 'crit'); return; }
+          CC.Store.agregarCargo({
+            unidadId: u.id, periodo: q('xMes').value, tipo: q('xTipo').value,
+            concepto: concepto, monto: monto, fechaVence: q('xVence').value || CC.per.hoyISO()
+          });
+          CC.ui.cerrarModal();
+          CC.ui.toast(CC.fmt.money2(monto) + ' cargados a la casa ' + u.clave, 'good');
+        };
+      });
+  },
 
   /** Corregir un cargo: un recargo de más, un monto mal capturado. Queda constancia. */
   corregirCargo: function (cargoId) {

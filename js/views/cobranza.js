@@ -81,7 +81,7 @@ CC.vistas.cobranza = {
       var cubierto = delMes > 0 && pendMes <= 0.005;
       var adelantado = cubierto && pagado < 0.005;
 
-      return '<tr class="' + clase + '">' +
+      return '<tr class="' + clase + ' fila-clic" data-casa="' + esc(u.id) + '" title="Ver la casa">' +
         '<td><a href="#/unidad/' + esc(u.id) + '" class="strong">' + esc(u.clave) + '</a>' +
         '<div class="muted" style="font-size:11px">' + esc(u.inquilino || u.propietario || '') + '</div></td>' +
         '<td class="r">' + (delMes ? esc(CC.fmt.money2(delMes)) : '<span class="muted">sin cargo</span>') + '</td>' +

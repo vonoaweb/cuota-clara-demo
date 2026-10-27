@@ -734,7 +734,7 @@ CC.Seed = (function () {
       }
     });
 
-    /* --- Reservas de áreas comunes    /* --- Reservas de áreas comunes (las canchas de tenis, si el perfil las trae) --- */
+    /* --- Reservas de áreas comunes (las canchas de tenis, si el perfil las trae) --- */
     var amenidades = (P.amenidades || []).map(function (a) { return Object.assign({}, a); });
     var reservas = [];
     if (amenidades.length) {

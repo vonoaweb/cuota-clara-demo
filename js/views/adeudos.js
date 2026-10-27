@@ -368,7 +368,7 @@ CC.vistas.adeudos = {
       var meses = s.desde ? CC.per.dif(s.desde, hoy) + 1 : 0;
       var clase = s.mesesVencidos >= 2 ? 'row--crit' : 'row--warn';
 
-      return '<tr class="' + clase + '">' +
+      return '<tr class="' + clase + ' fila-clic" data-casa="' + esc(u.id) + '" title="Ver la casa">' +
         '<td><a href="#/unidad/' + esc(u.id) + '" class="strong">' + esc(u.clave) + '</a>' +
         '<div class="muted" style="font-size:11px">' + esc(u.inquilino || u.propietario) + '</div></td>' +
         '<td><div class="cellstack"><span>' + esc(s.desde ? CC.fmt.periodo(s.desde) : '—') + '</span>' +

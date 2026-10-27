@@ -3,18 +3,22 @@
  * Lo que sabemos de la reunión con la administración (grabación y notas de
  * Fernando del 26-oct): cuota de $1,500 por casa; recargo de $50 si se paga del
  * día 6 al 17 y de $100 del 18 en adelante; caja chica para lo que se cobra y se
- * paga en efectivo, cuyo sobrante se deposita al banco; casa club que se renta
- * por evento; alberca templada con bomba de calor; la basura se paga cada semana.
+ * paga en efectivo, cuyo sobrante se deposita al banco; alberca templada con bomba
+ * de calor; la basura se paga cada semana. Si rentan la casa club, la renta se
+ * carga a la casa con "Cargo extra".
+ *
+ * Mallorca NO aparta canchas ni áreas (Fernando, 27-oct: "no me pidieron reservar
+ * la cancha, es otro proyecto"); las reservas son de Villas Cádiz. Por eso aquí no
+ * hay amenidades y no aparecen Reservas ni "Áreas que se apartan" (reservas: false).
  * Son 105 casas; la Casa 107 es una de más, para probar los avisos.
  *
- * Los vecinos, las referencias, el saldo del banco, los importes de los gastos y
- * la renta de la casa club son de ejemplo: se cambian por los reales al cargar
- * su información.
+ * Los vecinos, las referencias, el saldo del banco y los importes de los gastos
+ * son de ejemplo: se cambian por los reales al cargar su información.
  */
 window.CC = window.CC || {};
 CC.Perfil = {
   id: 'mallorca',
-  semilla: 'mallorca-2',
+  semilla: 'mallorca-3',
 
   condominio: {
     nombre: 'Condominio Mallorca Naciones Unidas',
@@ -78,24 +82,7 @@ CC.Perfil = {
     telefono: '+52 33 1144 1101', email: '', ocupacion: 'Propietario'
   },
 
-  amenidades: [
-    {
-      id: 'ame_club', nombre: 'Casa club', tipo: 'club',
-      abre: '09:00', cierra: '23:00', maxHorasDia: 6, anticipacionDias: 60, mesesBloqueo: 3,
-      costo: 1500, deposito: 2000
-    }
-  ],
-
-  capitulosExtra: [
-    {
-      nombre: 'Casa club',
-      articulos: [
-        'La casa club se aparta por evento con la administración. La renta se carga al estado de cuenta de la casa que la aparta y se paga antes del evento.',
-        'Se deja un depósito en garantía que se devuelve al revisar que el área quedó limpia y sin daños.',
-        'No se aparta la casa club con tres o más meses de adeudo, salvo convenio de pago al corriente.'
-      ]
-    }
-  ],
+  reservas: false,                // sin sección Reservas ni "Áreas que se apartan"
 
   temaAsamblea: 'el mantenimiento de la alberca templada',
   papeleria: 'Papelería'

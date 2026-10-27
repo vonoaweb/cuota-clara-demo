@@ -145,6 +145,13 @@
       else if (ACCIONES_GLOBALES[nombre]) ACCIONES_GLOBALES[nombre](c);
     });
 
+    // En las listas de casas, tocar cualquier parte de la fila (el nombre, el saldo) abre la casa
+    document.addEventListener('click', function (e) {
+      var fila = e.target.closest ? e.target.closest('tr[data-casa]') : null;
+      if (!fila || e.target.closest('a, button, input, select, textarea, label')) return;
+      location.hash = '#/unidad/' + fila.getAttribute('data-casa');
+    });
+
     // Cierre de la ventana modal
     document.getElementById('modal').addEventListener('click', function (e) {
       if (e.target.closest('[data-close]')) CC.ui.cerrarModal();

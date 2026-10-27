@@ -113,8 +113,9 @@ CC.vistas.ajustes = {
       '</div>');
 
     /* --- Áreas que se apartan (canchas, salón, asador) --- */
+    // Un condominio que no aparta áreas (perfil con reservas: false) no ve esta sección
     var ams = CC.Store.amenidades();
-    out.push(
+    if (!(CC.Perfil && CC.Perfil.reservas === false)) out.push(
       '<div class="panelbox">' +
       '<div class="panelbox__head"><h3>Áreas que se apartan</h3>' +
       '<button class="btn btn--sm btn--ghost" id="bNuevaArea">Agregar área</button></div>' +
@@ -273,7 +274,8 @@ CC.vistas.ajustes = {
       CC.Store.guardarAmenidades(leerAreas().filter(function (a) { return a.nombre; }));
       CC.ui.toast('Áreas guardadas', 'good');
     };
-    raiz.querySelector('#bNuevaArea').onclick = function () {
+    var bNueva = raiz.querySelector('#bNuevaArea');
+    if (bNueva) bNueva.onclick = function () {
       var l = leerAreas();
       l.push({
         id: CC.Store.nuevoId('ame'), nombre: 'Nueva área', tipo: 'area' + (l.length + 1),

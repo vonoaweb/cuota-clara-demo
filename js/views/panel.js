@@ -101,7 +101,7 @@ CC.vistas.panel = {
     var filasPend = pendientes.slice(0, 6).map(function (x) {
       var s = x.situacion;
       var clase = s.estado === 'moroso' ? 'row--crit' : s.estado === 'vencido' ? 'row--warn' : '';
-      return '<tr class="' + clase + '">' +
+      return '<tr class="' + clase + ' fila-clic" data-casa="' + esc(x.unidad.id) + '" title="Ver la casa">' +
         '<td><a href="#/unidad/' + esc(x.unidad.id) + '" class="strong">' + esc(x.unidad.clave) + '</a>' +
         '<div class="muted" style="font-size:11px">' + esc(x.unidad.inquilino || x.unidad.propietario) + '</div></td>' +
         '<td class="c">' + CC.ui.pill(s.estado) + '</td>' +
