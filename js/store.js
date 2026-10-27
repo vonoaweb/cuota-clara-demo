@@ -228,7 +228,10 @@ CC.Store = (function () {
   /** Aplica cambios y deja constancia de lo que había antes (para auditar). */
   function cambiarConHistorial(obj, cambios) {
     var antes = {}, hay = false;
+    // Un campo vacío que se guarda vacío ('' en vez de nada, false en vez de nada) no es una corrección
+    var vacio = function (v) { return v === undefined || v === null || v === '' || v === false; };
     Object.keys(cambios).forEach(function (k) {
+      if (vacio(obj[k]) && vacio(cambios[k])) return;
       if (JSON.stringify(obj[k]) !== JSON.stringify(cambios[k])) { antes[k] = obj[k]; hay = true; }
     });
     if (!hay) return false;
@@ -272,7 +275,10 @@ CC.Store = (function () {
     condominio: function () { return estado.condominio; },
     unidades: function () { return estado.unidades; },
     cargos: function () { return estado.cargos; },
-    pagos: function () { return estado.pagos; },
+    /** Los pagos que cuentan. Los cancelados conservan su folio pero no suman. */
+    pagos: function () { return estado.pagos.filter(function (p) { return !p.cancelado; }); },
+    /** Todos, con los cancelados: para la lista de cobranza y el control de folios. */
+    todosLosPagos: function () { return estado.pagos; },
     gastos: function () { return estado.gastos; },
     avisos: function () { return estado.avisos; },
     categorias: function () { return estado.categorias; },
@@ -330,8 +336,15 @@ CC.Store = (function () {
       guardar();
       return p;
     },
-    borrarPago: function (id) {
-      estado.pagos = estado.pagos.filter(function (p) { return p.id !== id; });
+    /**
+     * Un pago no se borra: se cancela con su motivo. El folio sigue a la vista
+     * para que no falte ninguno y el saldo de la casa se recalcula.
+     */
+    cancelarPago: function (id, motivo) {
+      var p = buscar(estado.pagos, id);
+      if (!p || p.cancelado) return;
+      cambiarConHistorial(p, { cancelado: true, motivoCancelacion: motivo || '', canceladoEl: new Date().toISOString() });
+      estado.meta.demo = false;
       guardar();
     },
 
@@ -416,7 +429,10 @@ CC.Store = (function () {
       var g = buscar(estado.gastos, id);
       if (!g) return null;
       if (cambios.fecha) cambios.periodo = String(cambios.fecha).slice(0, 7);
+      var revisado = g.revision;
       if (cambiarConHistorial(g, cambios)) {
+        // Lo que se corrige después de revisado vuelve a quedar por revisar
+        if (revisado) { g.historial[g.historial.length - 1].antes.revision = revisado; g.revision = null; }
         this._anotarProveedor(g.proveedor);
         estado.meta.demo = false;
         guardar();
@@ -428,6 +444,16 @@ CC.Store = (function () {
       var g = buscar(estado.gastos, id);
       if (!g) return;
       cambiarConHistorial(g, { estado: 'cancelado', motivoCancelacion: motivo || '' });
+      estado.meta.demo = false;
+      guardar();
+    },
+    /** Quien revisa (el comité o el tesorero) da por buenos los egresos: queda su nombre y la fecha. */
+    revisarGastos: function (ids, nombre) {
+      var fecha = new Date().toISOString();
+      ids.forEach(function (id) {
+        var g = buscar(estado.gastos, id);
+        if (g) g.revision = { nombre: nombre, fecha: fecha };
+      });
       estado.meta.demo = false;
       guardar();
     },
@@ -447,11 +473,6 @@ CC.Store = (function () {
       guardar();
       return c;
     },
-    borrarGasto: function (id) {
-      estado.gastos = estado.gastos.filter(function (g) { return g.id !== id; });
-      guardar();
-    },
-
     agregarUnidad: function (u) {
       u.id = nuevoId('uni');
       estado.unidades.push(u);
@@ -464,7 +485,9 @@ CC.Store = (function () {
       if (u) { Object.assign(u, cambios); guardar(); }
       return u;
     },
+    /** Solo se borra una casa sin pagos: sus recibos llevan folio y no puede faltar ninguno. */
     borrarUnidad: function (id) {
+      if (estado.pagos.some(function (p) { return p.unidadId === id; })) return false;
       estado.unidades = estado.unidades.filter(function (u) { return u.id !== id; });
       estado.cargos = estado.cargos.filter(function (c) { return c.unidadId !== id; });
       estado.pagos = estado.pagos.filter(function (p) { return p.unidadId !== id; });
@@ -472,6 +495,7 @@ CC.Store = (function () {
       estado.avisosAdeudo = (estado.avisosAdeudo || []).filter(function (a) { return a.unidadId !== id; });
       estado.notas = (estado.notas || []).filter(function (n) { return n.unidadId !== id; });
       guardar();
+      return true;
     },
 
     agregarAviso: function (a) {

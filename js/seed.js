@@ -54,7 +54,7 @@ CC.Seed = (function () {
      se le vuelve a sembrar con los datos nuevos en lugar de dejarle los viejos.
      Solo afecta a los datos de ejemplo: lo que alguien capturó de verdad
      (meta.demo === false) nunca se toca. */
-  var SEMILLA = P.semilla || 5;   // … 4 = + casa 151 de prueba · 5 = banco y caja chica, egresos con folio
+  var SEMILLA = P.semilla || 6;   // … 5 = banco y caja chica, egresos con folio · 6 = egresos con quién autorizó y revisión
   // Los correos inventados de los vecinos; el demo para enseñar usa example.com, que no es de nadie
   var DOMINIO_CORREO = P.dominioCorreo || 'correo.mx';
 
@@ -872,6 +872,15 @@ CC.Seed = (function () {
     });
 
     unidades.forEach(function (u) { delete u._cuota; });
+
+    /* --- Quién autorizó cada egreso y la revisión del comité (la de los meses
+       cerrados ya se hizo; la del mes en curso está pendiente) --- */
+    gastos.forEach(function (g) {
+      g.autorizo = g.monto >= 5000 ? 'Presidente del comité' : 'Administración';
+      if (g.periodo < hoy && g.estado === 'pagado') {
+        g.revision = { nombre: 'Tesorero del comité', fecha: CC.per.vence(CC.per.suma(g.periodo, 1), 4) + 'T19:00:00.000Z' };
+      }
+    });
 
     return {
       version: 1,

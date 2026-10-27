@@ -24,15 +24,29 @@ CC.Comprobantes = (function () {
 
   /* ---------- Piezas comunes ---------- */
 
-  function encabezado(doc, tipo, fol, fecha) {
+  /** El logo del condominio (Ajustes), listo para el PDF; null si no tiene. */
+  var logoListo = { src: null, img: null };
+  function cargarLogo() {
+    var src = CC.Store.condominio().logo || null;
+    if (src === logoListo.src) return Promise.resolve(logoListo.img);
+    return CC.PDF.jpeg(src, { ladoMax: 500, calidad: 0.92 }).then(function (img) {
+      logoListo = { src: src, img: img };
+      return img;
+    });
+  }
+
+  function encabezado(doc, tipo, fol, fecha, logo) {
     var c = CC.Store.condominio();
     doc.rect(0, 0, doc.ancho, 5, { relleno: ACENTO });
-    doc.texto(recortar(doc, c.nombre || 'Condominio', 330, { tam: 14, negrita: true }), M, M + 10,
+    var x0 = M;
+    if (logo) { var caja = doc.imagen(logo, M, M - 4, 64, 40, { alinear: 'izq' }); x0 = M + caja.w + 10; }
+    var anchoNom = 390 - (x0 - M);
+    doc.texto(recortar(doc, c.nombre || 'Condominio', anchoNom, { tam: 14, negrita: true }), x0, M + 10,
       { tam: 14, negrita: true, color: TINTA });
     var l2 = [c.direccion, c.ciudad].filter(Boolean).join(', ');
     var l3 = [c.telefono ? 'Tel. ' + c.telefono : '', c.email].filter(Boolean).join(' · ');
-    if (l2) doc.texto(recortar(doc, l2, 330, { tam: 8.5 }), M, M + 24, { tam: 8.5, color: GRIS });
-    if (l3) doc.texto(recortar(doc, l3, 330, { tam: 8.5 }), M, M + 35, { tam: 8.5, color: GRIS });
+    if (l2) doc.texto(recortar(doc, l2, anchoNom, { tam: 8.5 }), x0, M + 24, { tam: 8.5, color: GRIS });
+    if (l3) doc.texto(recortar(doc, l3, anchoNom, { tam: 8.5 }), x0, M + 35, { tam: 8.5, color: GRIS });
     var X = doc.ancho - M;
     doc.texto(tipo.toUpperCase(), X, M + 8, { tam: 8, negrita: true, color: ACENTO, alinear: 'der' });
     doc.texto('Folio ' + fol, X, M + 23, { tam: 13, negrita: true, color: TINTA, alinear: 'der' });
@@ -83,6 +97,10 @@ CC.Comprobantes = (function () {
   /* ---------- Recibo de pago de cuota (para el vecino) ---------- */
 
   function reciboPago(pagoId) {
+    return cargarLogo().then(function (logo) { return reciboPagoDoc(pagoId, logo); });
+  }
+
+  function reciboPagoDoc(pagoId, logo) {
     var d = CC.Model.datosRecibo(pagoId);
     if (!d) return Promise.reject(new Error('No se encontró el pago.'));
     var p = d.pago, u = d.unidad || { clave: '—', propietario: '' };
@@ -90,7 +108,7 @@ CC.Comprobantes = (function () {
     var fol = folio('P-', p.folio);
     var doc = CC.PDF.nuevo({ ancho: 612, alto: 396, titulo: 'Recibo ' + fol + ' · Casa ' + u.clave });
 
-    var top = encabezado(doc, 'Recibo de pago', fol, p.fecha);
+    var top = encabezado(doc, 'Recibo de pago', fol, p.fecha, logo);
     var y = top + 24;
     var anchoValor = DER - 18 - M - 88;
 
@@ -133,7 +151,8 @@ CC.Comprobantes = (function () {
       DER, yb + 35, { tam: 11, negrita: true, color: sd > 0.005 ? MAL : BIEN });
 
     firma(doc, DER, 318, 158, null, c.administrador || 'Administración', 'Recibió por la administración');
-    pie(doc, 'Consérvelo como comprobante de su pago. Generado el ' + CC.fmt.fechaCorta(CC.per.hoyISO()) + '.');
+    pie(doc, (p.cancelado ? 'CANCELADO' + (p.motivoCancelacion ? ': ' + p.motivoCancelacion : '') + '. ' : '') +
+      'Consérvelo como comprobante de su pago. Generado el ' + CC.fmt.fechaCorta(CC.per.hoyISO()) + '.');
 
     return Promise.resolve({ doc: doc, nombre: CC.PDF.nombreArchivo('Recibo ' + fol + ' Casa ' + u.clave) });
   }
@@ -168,10 +187,11 @@ CC.Comprobantes = (function () {
   function reciboSimple(cfg) {
     return Promise.all([
       cfg.firmaImg || Promise.resolve(null),
-      cfg.fotoImg || Promise.resolve(null)
+      cfg.fotoImg || Promise.resolve(null),
+      cargarLogo()
     ]).then(function (imgs) {
       var doc = CC.PDF.nuevo({ ancho: 612, alto: 396, titulo: cfg.titulo });
-      var top = encabezado(doc, cfg.tipo, cfg.folio, cfg.fecha);
+      var top = encabezado(doc, cfg.tipo, cfg.folio, cfg.fecha, imgs[2]);
       var y = top + 24;
       cfg.filas.forEach(function (f) {
         if (f[1]) y = dato(doc, y, f[0], f[1], f[2]);
@@ -192,33 +212,71 @@ CC.Comprobantes = (function () {
 
   function cuentaNombre(id) { var c = CC.Store.cuenta(id || 'banco'); return c ? c.nombre : 'Banco'; }
 
-  /** Recibo de un egreso: lo firma quien recibe el dinero (el jardinero, el de la basura). */
+  /* ---------- Recibo de egreso ---------- */
+
+  /**
+   * El recibo de cada egreso, con el mismo formato que el recibo de pago (la
+   * tabla tipo CondoVive confundió al cliente; Fernando, 27-oct). Lleva lo que
+   * pidió la administración de Mallorca en sus notas: folio, quién recibió el
+   * dinero (con su firma), quién lo autorizó, quién lo revisó y, si lo hay, el
+   * comprobante (la nota, el ticket o la factura) en la mitad de abajo de la hoja.
+   */
   function reciboEgreso(gastoId) {
     var g = CC.Store.gasto(gastoId);
     if (!g) return Promise.reject(new Error('No se encontró el egreso.'));
+    return Promise.all([
+      cargarLogo(),
+      imagen(g.firmaId, g.firmaInline, { ladoMax: 640, escalaMax: 3 }),
+      g.fotoId ? imagen(g.fotoId, null, { ladoMax: 1100 }) : Promise.resolve(null)
+    ]).then(function (imgs) { return documentoEgreso(g, imgs[0], imgs[1], imgs[2]); });
+  }
+
+  function documentoEgreso(g, logo, firmaImg, fotoImg) {
     var c = CC.Store.condominio();
     var fol = folio('E-', g.folioE);
-    return reciboSimple({
-      tipo: 'Recibo de egreso', folio: fol, fecha: g.fecha,
-      titulo: 'Recibo ' + fol + ' · ' + g.concepto,
-      archivo: 'Recibo ' + fol + ' ' + g.concepto,
-      filas: [
-        ['Recibí de', c.nombre, { negrita: true }],
-        ['La cantidad de', CC.fmt.letras(g.monto), { tam: 8.5, despues: 8 }],
-        ['Por concepto de', g.concepto, { negrita: true }],
-        ['Categoría', g.categoria],
-        ['Forma de pago', [g.metodo, cuentaNombre(g.cuenta), g.referencia].filter(Boolean).join(' · ')],
-        ['Identificación', g.identificacion, { tam: 9 }],
-        ['Nota', g.nota, { tam: 9 }]
-      ],
-      totalEtiqueta: 'Cantidad entregada', monto: g.monto,
-      firmaImg: imagen(g.firmaId, g.firmaInline, { ladoMax: 640, escalaMax: 3 }),
-      fotoImg: g.fotoId ? imagen(g.fotoId, null, { ladoMax: 700 }) : null,
-      firmaIzq: { rol: 'Entregó por la administración', nombre: c.administrador || 'Administración' },
-      firmaDer: { rol: 'Recibí conforme', nombre: g.proveedor, conImagen: true },
-      pie: (g.estado === 'cancelado' ? 'CANCELADO' + (g.motivoCancelacion ? ': ' + g.motivoCancelacion : '') + '. ' : '') +
-        'Comprobante de egreso. Generado el ' + CC.fmt.fechaCorta(CC.per.hoyISO()) + '.'
-    });
+    var cancel = g.estado === 'cancelado';
+    // Media carta, como el recibo de pago; con comprobante, carta y el comprobante abajo
+    var doc = CC.PDF.nuevo({ ancho: 612, alto: fotoImg ? 792 : 396, titulo: 'Recibo ' + fol + ' · ' + g.concepto });
+    var top = encabezado(doc, 'Recibo de egreso', fol, g.fecha, logo);
+    var y = top + 24;
+    var rev = g.revision ? g.revision.nombre + ' · ' + CC.fmt.fechaCorta(String(g.revision.fecha).slice(0, 10)) : '';
+
+    y = dato(doc, y, 'Pagamos a', g.proveedor, { negrita: true });
+    y = dato(doc, y, 'La cantidad de', CC.fmt.letras(g.monto), { tam: 8.5, despues: 8 });
+    y = dato(doc, y, 'Por concepto de', g.concepto, { negrita: true });
+    y = dato(doc, y, 'Categoría', g.categoria);
+    y = dato(doc, y, 'Forma de pago', [g.metodo, 'sale de ' + cuentaNombre(g.cuenta),
+      g.referencia ? 'referencia ' + g.referencia : ''].filter(Boolean).join(' · '), { tam: 9.5 });
+    y = dato(doc, y, 'Autorizó', g.autorizo, { negrita: true });
+    y = dato(doc, y, 'Revisó', rev || 'Pendiente de revisión', rev ? {} : { tam: 9, color: GRIS });
+    if (g.nota) dato(doc, y, 'Nota', g.nota, { tam: 9 });
+
+    var yb = cajaTotal(doc, top + 14, 'Total pagado', g.monto);
+    if (cancel) {
+      doc.texto('CANCELADO', DER, yb + 20, { tam: 6.8, negrita: true, color: MAL });
+      doc.parrafo(g.motivoCancelacion || 'Conserva su folio, pero no cuenta en los egresos.', DER, yb + 34, 158,
+        { tam: 9, color: MAL });
+    } else {
+      var nCorr = (g.historial || []).length;
+      doc.texto('REGISTRADO EN EL SISTEMA', DER, yb + 20, { tam: 6.8, negrita: true, color: GRIS });
+      doc.texto(CC.fmt.fechaCorta(String(g.registrado || g.fecha).slice(0, 10)), DER, yb + 34, { tam: 10, color: TINTA });
+      doc.texto(nCorr ? 'Corregido ' + nCorr + (nCorr === 1 ? ' vez' : ' veces') + ' (queda el historial)' : 'Sin correcciones',
+        DER, yb + 47, { tam: 8.5, color: GRIS });
+    }
+
+    firma(doc, M, 318, 190, null, c.administrador || 'Administración', 'Entregó por la administración');
+    firma(doc, DER, 318, 158, firmaImg, g.proveedor, 'Recibí conforme');
+    if (g.identificacion) doc.texto('Identificación: ' + g.identificacion, DER + 79, 351, { tam: 7, color: GRIS, alinear: 'centro' });
+
+    if (fotoImg) {
+      doc.linea(M, 384, doc.ancho - M, 384, { grosor: 0.5, color: LINEA, punteada: true });
+      doc.texto('COMPROBANTE DEL EGRESO ' + fol + ' (NOTA, TICKET O FACTURA)', M, 404, { tam: 6.8, negrita: true, color: GRIS });
+      doc.imagen(fotoImg, M, 414, doc.ancho - 2 * M, doc.alto - 46 - 414);
+    }
+
+    pie(doc, (cancel ? 'CANCELADO' + (g.motivoCancelacion ? ': ' + g.motivoCancelacion : '') + '. ' : '') +
+      'Comprobante de egreso. Generado el ' + CC.fmt.fechaCorta(CC.per.hoyISO()) + '.');
+    return { doc: doc, nombre: CC.PDF.nombreArchivo('Recibo ' + fol + ' ' + g.concepto) };
   }
 
   /** Recibo de un ingreso que no es cuota (tarjeta de acceso, multa en efectivo). */
@@ -272,6 +330,10 @@ CC.Comprobantes = (function () {
   /* ---------- Convenio de pago (carta, para firmar) ---------- */
 
   function convenio(convenioId) {
+    return cargarLogo().then(function (logo) { return convenioDoc(convenioId, logo); });
+  }
+
+  function convenioDoc(convenioId, logo) {
     var cv = CC.Store.convenio(convenioId);
     if (!cv) return Promise.reject(new Error('No se encontró el convenio.'));
     var e = CC.Model.estadoConvenio(cv);
@@ -282,7 +344,7 @@ CC.Comprobantes = (function () {
     var ancho = doc.ancho - 2 * M;
     var LIMITE = doc.alto - 56;
 
-    var y = encabezado(doc, 'Convenio de pago', fol, cv.fecha) + 34;
+    var y = encabezado(doc, 'Convenio de pago', fol, cv.fecha, logo) + 34;
     doc.texto('Convenio de pago en parcialidades', M, y, { tam: 15, negrita: true, color: TINTA });
     y += 22;
     y = doc.parrafo('En ' + (c.ciudad || '________') + ', a ' + CC.fmt.fechaLarga(cv.fecha) + ', ' +
@@ -343,6 +405,10 @@ CC.Comprobantes = (function () {
 
   /** Lo que se le manda al vecino: de tal mes a tal mes, con cada cargo y cada pago. */
   function estadoCuenta(unidadId, desde, hasta) {
+    return cargarLogo().then(function (logo) { return estadoCuentaDoc(unidadId, desde, hasta, logo); });
+  }
+
+  function estadoCuentaDoc(unidadId, desde, hasta, logo) {
     var u = CC.Store.unidad(unidadId);
     if (!u) return Promise.reject(new Error('No se encontró la casa.'));
     var c = CC.Store.condominio();
@@ -353,7 +419,7 @@ CC.Comprobantes = (function () {
     var LIMITE = doc.alto - 56;
     var rango = desde === hasta ? CC.fmt.periodo(desde) : CC.fmt.periodo(desde) + ' a ' + CC.fmt.periodo(hasta);
 
-    var y = encabezado(doc, 'Estado de cuenta', 'Casa ' + u.clave, CC.per.hoyISO()) + 30;
+    var y = encabezado(doc, 'Estado de cuenta', 'Casa ' + u.clave, CC.per.hoyISO(), logo) + 30;
     doc.texto(u.propietario || '', M, y, { tam: 14, negrita: true, color: TINTA });
     y += 16;
     doc.texto(rango + (u.referencia ? ' · referencia bancaria ' + u.referencia : ''), M, y, { tam: 9.5, color: GRIS });

@@ -19,7 +19,7 @@
 window.CC = window.CC || {};
 CC.Perfil = {
   id: 'mallorca',
-  semilla: 'mallorca-4',
+  semilla: 'mallorca-5',
 
   condominio: {
     nombre: 'Condominio Mallorca Naciones Unidas',

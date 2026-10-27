@@ -34,6 +34,12 @@ CC.vistas.ajustes = {
       '<label class="field" style="margin-top:14px"><span class="field__lab">Cuenta para pagos</span>' +
       '<input class="input mono" id="cCuenta" value="' + esc(c.cuenta || '') + '" placeholder="Banco, cuenta y CLABE">' +
       '<span class="field__hint">Aparece en el portal del residente y en los recordatorios de pago</span></label>' +
+      '<div class="field" style="margin-top:14px"><span class="field__lab">Logo del condominio</span>' +
+      '<div class="logocond">' + (c.logo ? '<img src="' + esc(c.logo) + '" alt="Logo del condominio">' : '<span class="muted">Sin logo</span>') +
+      '<label class="btn btn--sm btn--ghost" for="cLogo">' + (c.logo ? 'Cambiar logo' : 'Subir logo') + '</label>' +
+      '<input type="file" id="cLogo" accept="image/*" hidden>' +
+      (c.logo ? '<button type="button" class="btn btn--sm btn--ghost" id="cLogoQuitar">Quitar</button>' : '') + '</div>' +
+      '<span class="field__hint">Sale arriba en los recibos de pago y de egreso y en los estados de cuenta</span></div>' +
       '</div></div>');
 
     /* --- Reglas de cobro --- */
@@ -227,6 +233,37 @@ CC.vistas.ajustes = {
         registroVisitas: !!(raiz.querySelector('#cVisitas') || {}).checked
       });
       CC.ui.toast('Datos guardados', 'good');
+    };
+
+    /* El logo: se guarda en los datos del condominio (viaja con el respaldo) */
+    var inpLogo = raiz.querySelector('#cLogo');
+    if (inpLogo) inpLogo.onchange = function () {
+      var f = inpLogo.files && inpLogo.files[0];
+      if (!f) return;
+      var lector = new FileReader();
+      lector.onload = function () {
+        var img = new Image();
+        img.onload = function () {
+          var k = Math.min(1, 500 / Math.max(img.width || 1, img.height || 1));
+          var lienzo = document.createElement('canvas');
+          lienzo.width = Math.max(1, Math.round((img.width || 300) * k));
+          lienzo.height = Math.max(1, Math.round((img.height || 150) * k));
+          var cx = lienzo.getContext('2d');
+          cx.fillStyle = '#FFFFFF';   // un PNG transparente no debe salir con fondo negro
+          cx.fillRect(0, 0, lienzo.width, lienzo.height);
+          cx.drawImage(img, 0, 0, lienzo.width, lienzo.height);
+          CC.Store.actualizarCondominio({ logo: lienzo.toDataURL('image/jpeg', 0.9) });
+          CC.ui.toast('Logo guardado: ya sale en los recibos', 'good');
+        };
+        img.onerror = function () { CC.ui.toast('El archivo no es una imagen', 'crit'); };
+        img.src = lector.result;
+      };
+      lector.readAsDataURL(f);
+    };
+    var quitarLogo = raiz.querySelector('#cLogoQuitar');
+    if (quitarLogo) quitarLogo.onclick = function () {
+      CC.Store.actualizarCondominio({ logo: null });
+      CC.ui.toast('Logo quitado');
     };
 
     /* Las reglas de cobro se guardan con el mismo boton */

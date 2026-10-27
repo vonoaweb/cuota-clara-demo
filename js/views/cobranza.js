@@ -117,16 +117,30 @@ CC.vistas.cobranza = {
       '</table></div></div>');
 
     /* --- Pagos recibidos --- */
-    var recibidos = pagosPeriodo.slice().sort(function (a, b) { return (a.fecha < b.fecha) ? 1 : -1; });
+    // Con los cancelados: siguen a la vista, tachados, para que no falte ningún folio
+    var recibidos = CC.Store.todosLosPagos().filter(function (x) { return x.periodo === p; })
+      .sort(function (a, b) { return (b.folio || 0) - (a.folio || 0); });
+    var nCancel = recibidos.filter(function (x) { return x.cancelado; }).length;
     out.push('<div class="panelbox">' +
       '<div class="panelbox__head"><h3>Pagos recibidos en el periodo</h3>' +
-      '<span class="eyebrow">' + recibidos.length + ' movimientos</span></div>' +
+      '<span class="eyebrow">' + (recibidos.length - nCancel) + ' movimientos' +
+      (nCancel ? ' · ' + nCancel + (nCancel === 1 ? ' cancelado' : ' cancelados') : '') + '</span></div>' +
       (recibidos.length
         ? '<div class="tablewrap"><table class="ledger">' +
           '<thead><tr><th>Folio</th><th>Fecha</th><th>Casa</th><th>Forma</th><th>Referencia</th>' +
           '<th class="r">Monto</th><th class="noprint"></th></tr></thead><tbody>' +
           recibidos.map(function (x) {
             var u = CC.Store.unidad(x.unidadId);
+            if (x.cancelado) {
+              return '<tr class="row--cancelado">' +
+                '<td class="mono" style="font-size:12px">' + esc(CC.Comprobantes.folio('P-', x.folio)) + '</td>' +
+                '<td class="mono" style="font-size:12px">' + esc(CC.fmt.fechaCorta(x.fecha)) + '</td>' +
+                '<td class="strong">' + esc(u ? u.clave : '—') + '</td>' +
+                '<td>' + esc(x.metodo || '—') + '</td>' +
+                '<td class="mono" style="font-size:12px">' + esc(x.referencia || '—') + '</td>' +
+                '<td class="r">' + esc(CC.fmt.money2(x.monto)) + '</td>' +
+                '<td class="r noprint"><span class="pill pill--mute" title="' + esc(x.motivoCancelacion || '') + '">Cancelado</span></td></tr>';
+            }
             return '<tr>' +
               '<td class="mono" style="font-size:12px">' + esc(CC.Comprobantes.folio('P-', x.folio)) + '</td>' +
               '<td class="mono" style="font-size:12px">' + esc(CC.fmt.fechaCorta(x.fecha)) + '</td>' +
@@ -139,7 +153,7 @@ CC.vistas.cobranza = {
               '<td class="r noprint" style="white-space:nowrap">' +
               '<button class="btn btn--sm btn--soft" data-recpago="' + esc(x.id) + '" title="Descargar recibo en PDF">' +
               CC.ui.icono('imprimir', 'i--sm') + ' Recibo</button> ' +
-              '<button class="iconbtn" data-delpago="' + esc(x.id) + '" title="Eliminar pago">' +
+              '<button class="iconbtn" data-cancelpago="' + esc(x.id) + '" title="Cancelar pago (el folio se queda)">' +
               CC.ui.icono('cerrar', 'i--sm') + '</button></td>' +
               '</tr>';
           }).join('') + '</tbody></table></div>'
@@ -161,14 +175,17 @@ CC.vistas.cobranza = {
     raiz.querySelectorAll('[data-recpago]').forEach(function (b) {
       b.onclick = function () { CC.Comprobantes.descargar(CC.Comprobantes.reciboPago(b.getAttribute('data-recpago'))); };
     });
-    raiz.querySelectorAll('[data-delpago]').forEach(function (b) {
+    raiz.querySelectorAll('[data-cancelpago]').forEach(function (b) {
       b.onclick = function () {
-        CC.ui.confirmar('Eliminar pago',
-          'El pago se borra del historial y el saldo de la unidad se recalcula.',
-          'Eliminar', function () {
-            CC.Store.borrarPago(b.getAttribute('data-delpago'));
-            CC.ui.toast('Pago eliminado');
-          }, true);
+        var pg = CC.Store.pago(b.getAttribute('data-cancelpago'));
+        var fol = CC.Comprobantes.folio('P-', pg.folio);
+        CC.ui.pedirTexto('Cancelar el pago ' + fol,
+          'El pago deja de contar y el saldo de la casa se recalcula, pero el folio ' + fol +
+          ' se queda a la vista con el motivo: no se puede borrar. ¿Por qué se cancela?',
+          'Cancelar pago', function (motivo) {
+            CC.Store.cancelarPago(pg.id, motivo);
+            CC.ui.toast('Pago ' + fol + ' cancelado; su folio sigue a la vista');
+          });
       };
     });
   },

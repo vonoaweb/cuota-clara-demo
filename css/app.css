@@ -717,6 +717,9 @@ input.num,select.num{font-family:var(--f-mono)}
   background:var(--accent-soft);color:var(--accent);font-size:12.5px;line-height:1.5;
 }
 .note--demo{background:var(--warn-soft);color:var(--warn);border:1px solid var(--warn-line)}
+.note--crit{background:var(--crit-soft);color:var(--crit);border:1px solid var(--crit-line)}
+.logocond{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:6px;font-size:12.5px}
+.logocond img{max-height:64px;max-width:200px;display:block;border-radius:4px;background:#fff;padding:4px;border:1px solid var(--rule)}
 .note strong{font-weight:600}
 
 .split{display:grid;grid-template-columns:repeat(auto-fit,minmax(288px,1fr));gap:16px;align-items:start}

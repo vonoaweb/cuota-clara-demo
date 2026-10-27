@@ -71,8 +71,14 @@ function formularioUnidad(unidad) {
 
       var borrar = cuerpo.querySelector('#bBorrar');
       if (borrar) borrar.onclick = function () {
+        var conFolio = CC.Store.todosLosPagos().filter(function (p) { return p.unidadId === u.id; }).length;
+        if (conFolio) {
+          CC.ui.toast('La casa ' + u.clave + ' tiene ' + conFolio + (conFolio === 1 ? ' pago' : ' pagos') +
+            ' con folio; no se puede eliminar para que no falte ningún recibo', 'crit');
+          return;
+        }
         CC.ui.confirmar('Eliminar ' + u.clave,
-          'Se borra la casa junto con sus cargos, pagos e historial. Esta acción no se puede deshacer.',
+          'Se borra la casa junto con sus cargos e historial. Esta acción no se puede deshacer.',
           'Eliminar', function () {
             CC.Store.borrarUnidad(u.id);
             CC.ui.toast('Casa eliminada');
@@ -456,6 +462,18 @@ CC.vistas.unidad = {
             'aplicado a ' + CC.fmt.periodo(p.periodo),
             p.nota
           ].filter(Boolean).join(' · ')
+        });
+      });
+    // Los cancelados también se ven, con su motivo: el folio no desaparece
+    CC.Store.todosLosPagos().filter(function (p) { return p.unidadId === u.id && p.cancelado; })
+      .forEach(function (p) {
+        eventos.push({
+          fecha: p.fecha,
+          etiqueta: 'Pago cancelado',
+          tono: 'mute',
+          titulo: CC.fmt.money2(p.monto) + ' · folio ' + CC.Comprobantes.folio('P-', p.folio) + ' (no cuenta)',
+          detalle: 'Se canceló el ' + CC.fmt.fecha(String(p.canceladoEl || '').slice(0, 10)) +
+            (p.motivoCancelacion ? ': ' + p.motivoCancelacion : '')
         });
       });
 
