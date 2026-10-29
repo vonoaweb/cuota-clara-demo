@@ -4,14 +4,19 @@ window.CC = window.CC || {};
 CC.vistas = CC.vistas || {};
 
 CC.vistas.reportes = {
-  titulo: 'Reportes',
-  sub: function (ctx) { return 'Cierre de ' + CC.fmt.periodo(ctx.periodo); },
-  acciones: function () {
+  titulo: 'Reportes y cierre',
+  sub: function (ctx) { return 'Cierre de ' + CC.fmt.periodo(ctx.periodo) + (CC.Store.mesCerrado(ctx.periodo) ? ' · cerrado' : ''); },
+  acciones: function (ctx) {
+    var cerrado = CC.Store.mesCerrado(ctx.periodo);
     return [
-      { texto: 'Imprimir cierre', icono: 'imprimir', clase: 'btn', accion: 'imprimir' },
-      { texto: 'Copiar resumen', icono: 'avisos', clase: 'btn btn--ghost', accion: 'copiarResumen' }
+      { texto: cerrado ? 'Reabrir el mes' : 'Cerrar el mes', icono: 'candado', clase: cerrado ? 'btn btn--ghost' : 'btn', accion: 'cerrarMes' },
+      { texto: 'Imprimir', icono: 'imprimir', clase: 'btn btn--ghost', accion: 'imprimir' },
+      { texto: 'Copiar resumen', icono: 'avisos', clase: 'btn btn--ghost', accion: 'copiarResumen' },
+      { texto: 'Entrega-recepción', icono: 'recibos', clase: 'btn btn--ghost', accion: 'entrega' }
     ];
   },
+  cerrarMes: function (ctx) { CC.Cierre.cerrar(ctx.periodo); },
+  entrega: function () { CC.Cierre.entrega(); },
 
   render: function (ctx) {
     var esc = CC.ui.esc;
@@ -22,6 +27,20 @@ CC.vistas.reportes = {
     var cajaPrevia = CC.Model.caja(CC.per.suma(p, -1));
     var fondo = CC.Model.fondoReserva(p);
     var out = [];
+
+    /* --- El cierre del mes: quién lo cerró o qué falta --- */
+    var cierre = CC.Store.cierre(p);
+    if (cierre) {
+      out.push('<div class="note noprint"><div><strong>' + esc(CC.fmt.periodo(p)) + ' está cerrado</strong>' +
+        (cierre.por ? ' por ' + esc(cierre.por.nombre) : '') + ' el ' + esc(CC.fmt.fechaCorta(String(cierre.fecha).slice(0, 10))) +
+        '. Lo de este mes ya no se cambia.' + (cierre.nota ? ' Nota: ' + esc(cierre.nota) : '') + '</div></div>');
+    } else if (p < CC.per.hoy()) {
+      var rv = CC.Cierre.revision(p);
+      out.push('<div class="cta noprint"><div class="cta__txt"><strong>' + esc(CC.fmt.periodo(p)) + ' ya terminó y sigue abierto.</strong> ' +
+        (rv.sinRevisar.length ? rv.sinRevisar.length + (rv.sinRevisar.length === 1 ? ' egreso sin revisar · ' : ' egresos sin revisar · ') : 'Egresos revisados · ') +
+        (rv.arqueo ? 'caja contada' : 'falta contar la caja') + '. Cuando todo cuadre, el comité lo cierra para que ya no se pueda cambiar.</div>' +
+        '<button class="btn" data-accion="cerrarMes">' + CC.ui.icono('candado', 'i--sm') + ' Cerrar el mes</button></div>');
+    }
 
     /* --- Encabezado del documento --- */
     out.push(

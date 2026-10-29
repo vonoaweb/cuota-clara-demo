@@ -3,6 +3,42 @@
 window.CC = window.CC || {};
 CC.vistas = CC.vistas || {};
 
+/** Alta de un usuario, o contraseña nueva para uno que ya existe. */
+function formularioUsuario(u) {
+  var esc = CC.ui.esc;
+  var nuevo = !u;
+  var yo = CC.Sesion.usuario();
+  var propia = !nuevo && yo && yo.id === u.id;
+  CC.ui.modal(nuevo ? 'Agregar usuario' : propia ? 'Cambiar mi contraseña' : 'Contraseña nueva para ' + u.nombre,
+    (nuevo
+      ? '<div class="formgrid"><label class="field"><span class="field__lab">Nombre</span><input class="input" id="uNombre" autocomplete="off"></label>' +
+        '<label class="field"><span class="field__lab">Papel</span><select class="input" id="uRol">' +
+        '<option value="admin">Administración: captura el día a día</option><option value="comite">Comité: además revisa y cierra el mes</option></select></label></div>'
+      : '<p style="font-size:13px;color:var(--ink-2);margin-bottom:12px">' + (propia ? 'Escribe tu contraseña nueva dos veces.'
+        : 'Que ' + esc(u.nombre) + ' la escriba aquí, o pónganle una provisional y que la cambie al entrar.') + '</p>') +
+    '<div class="formgrid" style="margin-top:12px"><label class="field"><span class="field__lab">Contraseña</span><input class="input" id="uClave" type="password" autocomplete="new-password"></label>' +
+    '<label class="field"><span class="field__lab">Repítela</span><input class="input" id="uClave2" type="password" autocomplete="new-password"></label></div>' +
+    '<div class="formactions"><button type="button" class="btn btn--ghost" id="uCerrar">Cerrar</button>' +
+    '<button type="button" class="btn" id="uOk">Guardar</button></div>',
+    function (cuerpo) {
+      var q = function (id) { return cuerpo.querySelector('#' + id); };
+      q('uCerrar').onclick = CC.ui.cerrarModal;
+      q('uOk').onclick = function () {
+        var clave = q('uClave').value;
+        if (nuevo && !q('uNombre').value.trim()) { CC.ui.toast('Falta el nombre', 'crit'); return; }
+        if (clave.length < 4) { CC.ui.toast('La contraseña necesita 4 letras o números cuando menos', 'crit'); return; }
+        if (clave !== q('uClave2').value) { CC.ui.toast('Las dos contraseñas no coinciden', 'crit'); return; }
+        var id = nuevo ? CC.Store.nuevoId('usr') : u.id;
+        CC.Sesion.cifrar(clave, id).then(function (h) {
+          if (nuevo) CC.Store.agregarUsuario({ id: id, nombre: q('uNombre').value.trim(), rol: q('uRol').value, clave: h });
+          else CC.Store.actualizarUsuario(id, { clave: h });
+          CC.ui.cerrarModal();
+          CC.ui.toast(nuevo ? 'Usuario agregado' : 'Contraseña cambiada', 'good');
+        }).catch(function (err) { CC.ui.toast(err.message, 'crit'); });
+      };
+    });
+}
+
 CC.vistas.ajustes = {
   titulo: 'Ajustes',
   sub: function () { return 'Datos del condominio y reglas de cobro'; },
@@ -184,6 +220,7 @@ CC.vistas.ajustes = {
       'gastos, recibos y reglamento. Guárdalo en una carpeta o en una memoria USB. ' +
       'Con "Abrir desde archivo" se recupera tal cual, en esta o en otra computadora.</p>' +
 
+      (CC.Perfil && CC.Perfil.produccion ? '' :
       '<div style="border-top:1px solid var(--rule);padding-top:16px;margin-top:4px">' +
       '<p class="eyebrow" style="margin-bottom:8px">Empezar de nuevo</p>' +
       '<div class="formrow" style="gap:9px">' +
@@ -192,9 +229,49 @@ CC.vistas.ajustes = {
       '</div>' +
       '<p class="field__hint" style="margin-top:8px">' +
       '"Empezar con mi condominio" borra todo y te deja la estructura vacía para capturar tus casas reales.</p>' +
-      '</div>' +
+      '</div>') +
 
       '</div></div>');
+
+    /* --- Usuarios y contraseñas --- */
+    var usuarios = CC.Store.usuarios();
+    var yo = CC.Sesion.usuario();
+    out.push(
+      '<div class="panelbox" id="usuarios">' +
+      '<div class="panelbox__head"><h3>Usuarios y contraseñas</h3>' +
+      (usuarios.length && CC.Sesion.puede('comite') ? '<button class="btn btn--sm" id="bNuevoUsuario">' + CC.ui.icono('mas', 'i--sm') + ' Agregar usuario</button>' : '') + '</div>' +
+      (usuarios.length
+        ? '<div class="tablewrap"><table class="ledger"><thead><tr><th>Nombre</th><th>Papel</th><th>Desde</th><th class="c">Estado</th><th class="noprint"></th></tr></thead><tbody>' +
+          usuarios.map(function (u) {
+            var esYo = yo && yo.id === u.id;
+            return '<tr' + (u.activo ? '' : ' class="row--cancelado"') + '><td class="strong">' + esc(u.nombre) + (esYo ? ' <span class="pill pill--flat">tú</span>' : '') + '</td>' +
+              '<td>' + esc(CC.Sesion.nombreRol(u.rol)) + '</td>' +
+              '<td class="mono" style="font-size:12px">' + esc(CC.fmt.fechaCorta(String(u.creado || '').slice(0, 10))) + '</td>' +
+              '<td class="c">' + (u.activo ? '<span class="pill pill--good">Activo</span>' : '<span class="pill pill--mute">De baja</span>') + '</td>' +
+              '<td class="r noprint" style="white-space:nowrap">' + (u.activo && (esYo || CC.Sesion.puede('comite'))
+                ? '<button class="btn btn--sm btn--ghost" data-clave="' + esc(u.id) + '">' + (esYo ? 'Cambiar mi contraseña' : 'Poner contraseña nueva') + '</button> ' +
+                  (esYo ? '' : '<button class="btn btn--sm btn--ghost" data-baja="' + esc(u.id) + '">Dar de baja</button>')
+                : '') + '</td></tr>';
+          }).join('') + '</tbody></table></div>' +
+          '<div class="panelbox__body" style="border-top:1px solid var(--rule)"><p class="field__hint">Un usuario no se borra: se da de baja y su nombre ' +
+          'queda en la bitácora con todo lo que hizo. Solo el comité agrega, da de baja o pone contraseñas nuevas.</p></div>'
+        : '<div class="panelbox__body"><p style="font-size:13px;color:var(--ink-2);max-width:66ch">Todavía no hay usuarios: cualquiera que abra el sistema puede ' +
+          'hacer todo y no queda quién lo hizo. Con usuarios, cada quien entra con su contraseña y el sistema anota quién registró, ' +
+          'corrigió o canceló cada cosa.</p><div class="formrow" style="margin-top:12px"><a class="btn" href="#/inicio">Crear los usuarios</a></div></div>') +
+      '</div>');
+
+    /* --- Pantalla: colores y tamaño de letra (de esta computadora) --- */
+    out.push(
+      '<div class="panelbox"><div class="panelbox__head"><h3>Pantalla</h3><span class="eyebrow">Solo en esta computadora</span></div>' +
+      '<div class="panelbox__body"><div class="formgrid">' +
+      '<div class="field"><span class="field__lab">Colores</span><div class="tema" role="group" aria-label="Colores de la pantalla">' +
+      '<button type="button" data-tema="claro">Claro</button><button type="button" data-tema="oscuro">Oscuro</button><button type="button" data-tema="sistema">Auto</button></div>' +
+      '<span class="field__hint">Auto: igual que la computadora (oscuro de noche si así la tienen)</span></div>' +
+      '<div class="field"><span class="field__lab">Tamaño de la letra</span><div class="tema" role="group" aria-label="Tamaño de la letra">' +
+      [['1', 'Normal'], ['1.1', 'Grande'], ['1.2', 'Más grande']].map(function (t) {
+        return '<button type="button" data-letra="' + t[0] + '"' + (CC.ui.leerLetra() === t[0] ? ' class="is-on"' : '') + '>' + t[1] + '</button>';
+      }).join('') + '</div></div>' +
+      '</div></div></div>');
 
     return out.join('');
 
@@ -211,6 +288,33 @@ CC.vistas.ajustes = {
 
   montar: function (raiz, ctx, redibujar) {
     var v = function (id) { var e = raiz.querySelector('#' + id); return e ? e.value : ''; };
+
+    CC.ui.aplicarTema(CC.ui.leerTema());   // marca el tema elegido en "Pantalla"
+    raiz.querySelectorAll('[data-letra]').forEach(function (b) {
+      b.onclick = function () { CC.ui.aplicarLetra(b.getAttribute('data-letra')); redibujar(); };
+    });
+    if (ctx.param) {
+      var ancla = raiz.querySelector('#' + ctx.param);
+      if (ancla) setTimeout(function () { ancla.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, 60);
+    }
+    var bNuevo = raiz.querySelector('#bNuevoUsuario');
+    if (bNuevo) bNuevo.onclick = function () { formularioUsuario(null); };
+    raiz.querySelectorAll('[data-clave]').forEach(function (b) {
+      b.onclick = function () { formularioUsuario(CC.Store.usuario(b.getAttribute('data-clave'))); };
+    });
+    raiz.querySelectorAll('[data-baja]').forEach(function (b) {
+      b.onclick = function () {
+        var u = CC.Store.usuario(b.getAttribute('data-baja'));
+        var comites = CC.Store.usuarios().filter(function (x) { return x.activo && x.rol === 'comite'; });
+        if (u.rol === 'comite' && comites.length <= 1) { CC.ui.toast('Tiene que quedar alguien del comité activo', 'crit'); return; }
+        CC.ui.confirmar('Dar de baja a ' + u.nombre,
+          'Ya no podrá entrar al sistema. Su nombre se queda en la bitácora con todo lo que hizo.',
+          'Dar de baja', function () {
+            CC.Store.actualizarUsuario(u.id, { activo: false, baja: new Date().toISOString() });
+            CC.ui.toast(u.nombre + ' quedó de baja');
+          }, true);
+      };
+    });
 
     raiz.querySelector('#bGuardarCond').onclick = function () {
       CC.Store.actualizarCondominio({
@@ -240,25 +344,10 @@ CC.vistas.ajustes = {
     if (inpLogo) inpLogo.onchange = function () {
       var f = inpLogo.files && inpLogo.files[0];
       if (!f) return;
-      var lector = new FileReader();
-      lector.onload = function () {
-        var img = new Image();
-        img.onload = function () {
-          var k = Math.min(1, 500 / Math.max(img.width || 1, img.height || 1));
-          var lienzo = document.createElement('canvas');
-          lienzo.width = Math.max(1, Math.round((img.width || 300) * k));
-          lienzo.height = Math.max(1, Math.round((img.height || 150) * k));
-          var cx = lienzo.getContext('2d');
-          cx.fillStyle = '#FFFFFF';   // un PNG transparente no debe salir con fondo negro
-          cx.fillRect(0, 0, lienzo.width, lienzo.height);
-          cx.drawImage(img, 0, 0, lienzo.width, lienzo.height);
-          CC.Store.actualizarCondominio({ logo: lienzo.toDataURL('image/jpeg', 0.9) });
-          CC.ui.toast('Logo guardado: ya sale en los recibos', 'good');
-        };
-        img.onerror = function () { CC.ui.toast('El archivo no es una imagen', 'crit'); };
-        img.src = lector.result;
-      };
-      lector.readAsDataURL(f);
+      CC.ui.imagenEnBlanco(f, 500).then(function (d) {
+        CC.Store.actualizarCondominio({ logo: d });
+        CC.ui.toast('Logo guardado: ya sale en los recibos', 'good');
+      }, function (err) { CC.ui.toast(err.message, 'crit'); });
     };
     var quitarLogo = raiz.querySelector('#cLogoQuitar');
     if (quitarLogo) quitarLogo.onclick = function () {
@@ -440,18 +529,20 @@ CC.vistas.ajustes = {
         });
     };
 
-    raiz.querySelector('#bVaciar').onclick = function () {
+    var bVaciar = raiz.querySelector('#bVaciar');   // no existen en el programa del condominio
+    if (bVaciar) bVaciar.onclick = function () {
       CC.ui.confirmar('Empezar con mi condominio',
         'Se borra todo lo que hay ahora, incluidos los datos de ejemplo, y quedas con la estructura vacía. ' +
         'Si quieres conservar lo actual, copia primero el respaldo.',
         'Borrar y empezar', function () {
           CC.Store.empezarDeCero({ nombre: 'Mi condominio' });
-          CC.ui.toast('Listo: captura tus casas en la sección Casas', 'good');
-          location.hash = '#/ajustes';
+          CC.ui.toast('Listo: ahora sigue los Primeros pasos', 'good');
+          location.hash = '#/inicio';
         }, true);
     };
 
-    raiz.querySelector('#bEjemplo').onclick = function () {
+    var bEjemplo = raiz.querySelector('#bEjemplo');
+    if (bEjemplo) bEjemplo.onclick = function () {
       CC.ui.confirmar('Volver a los datos de ejemplo',
         'Se reemplaza la información actual por el condominio de ejemplo.',
         'Restaurar ejemplo', function () {

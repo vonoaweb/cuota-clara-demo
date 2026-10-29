@@ -418,12 +418,21 @@ CC.vistas.gastos = {
     if (!lista.length) { CC.ui.toast('Los egresos de ' + CC.fmt.periodo(ctx.periodo) + ' ya están revisados', 'good'); return; }
     var antes = CC.Store.gastos().filter(function (g) { return g.revision; })
       .sort(function (a, b) { return a.revision.fecha < b.revision.fecha ? 1 : -1; })[0];
+    // Con usuarios: revisa quien está dentro (del comité) y nunca lo que capturó él mismo
+    var yo = CC.Sesion.usuario();
+    if (CC.Sesion.hayUsuarios() && !CC.Sesion.puede('comite')) { CC.ui.toast('Los egresos los revisa alguien del comité', 'crit'); return; }
+    var propio = function (g) { return yo && g.registradoPor && g.registradoPor.id === yo.id; };
     CC.ui.modal('Revisar egresos de ' + CC.fmt.periodo(ctx.periodo),
       '<p style="font-size:13.5px;color:var(--ink-2);margin-bottom:12px">Revisa cada egreso con su comprobante y palomea los que estén bien. ' +
       'Queda tu nombre y la fecha en el recibo del egreso; si después alguien corrige uno, vuelve a quedar por revisar.</p>' +
       '<div class="tablewrap"><table class="ledger"><thead><tr><th class="c"><input type="checkbox" id="rvTodos" checked aria-label="Todos"></th>' +
       '<th>Folio</th><th>Concepto</th><th>Autorizó</th><th class="c">Comprobante</th><th class="r">Monto</th></tr></thead><tbody>' +
       lista.map(function (g) {
+        if (propio(g)) {
+          return '<tr class="row--cancelado" title="Lo capturaste tú: lo revisa otra persona"><td class="c">—</td>' +
+            '<td class="mono" style="font-size:12px">' + esc(folioEgreso(g)) + '</td><td colspan="3">' + esc(g.concepto) +
+            ' · <span class="muted">lo capturaste tú; lo revisa otra persona</span></td><td class="r">' + esc(CC.fmt.money2(g.monto)) + '</td></tr>';
+        }
         return '<tr><td class="c"><input type="checkbox" data-rv="' + esc(g.id) + '" checked></td>' +
           '<td class="mono" style="font-size:12px">' + esc(folioEgreso(g)) + '</td>' +
           '<td><div class="cellstack"><span>' + esc(g.concepto) + '</span><small>' + esc(g.proveedor || '') + '</small></div></td>' +
@@ -433,7 +442,8 @@ CC.vistas.gastos = {
       }).join('') + '</tbody></table></div>' +
       '<div id="rvFoto" style="margin-top:12px"></div>' +
       '<label class="field" style="margin-top:14px"><span class="field__lab">Revisó</span>' +
-      '<input class="input" id="rvNombre" value="' + esc(antes ? antes.revision.nombre : '') + '" placeholder="Nombre de quien revisa (tesorero, comité)"></label>' +
+      '<input class="input" id="rvNombre" value="' + esc(yo ? yo.nombre : antes ? antes.revision.nombre : '') + '"' + (yo ? ' readonly' : '') +
+      ' placeholder="Nombre de quien revisa (tesorero, comité)"></label>' +
       '<div class="formactions"><button type="button" class="btn btn--ghost" id="rvCerrar">Cerrar</button>' +
       '<button type="button" class="btn" id="rvOk">Marcar como revisados</button></div>',
       function (cuerpo) {

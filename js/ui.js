@@ -37,8 +37,10 @@ CC.ui = (function () {
   /* ---------- Ventana modal ---------- */
   var focoPrevio = null;
 
-  function modal(titulo, html, alMontar) {
+  /** opc.ancho: ventana ancha, para las tablas que se llenan (el padrón de casas). */
+  function modal(titulo, html, alMontar, opc) {
     var m = document.getElementById('modal');
+    m.querySelector('.modal__box').classList.toggle('modal__box--ancho', !!(opc && opc.ancho));
     document.getElementById('modalTitle').textContent = titulo;
     var cuerpo = document.getElementById('modalBody');
     cuerpo.innerHTML = html;
@@ -252,9 +254,21 @@ CC.ui = (function () {
     else if (t === 'oscuro') raiz.setAttribute('data-theme', 'dark');
     else raiz.removeAttribute('data-theme');
     try { window.localStorage.setItem('cuotaclara.tema', t); } catch (e) { /* sin persistencia */ }
-    var btn = document.getElementById('btnTema');
-    if (btn) btn.querySelector('span').textContent =
-      t === 'claro' ? 'Tema claro' : t === 'oscuro' ? 'Tema oscuro' : 'Tema del sistema';
+    // Los selectores de tema (menú lateral, "Más" en el celular y Ajustes) marcan el elegido
+    document.querySelectorAll('[data-tema]').forEach(function (b) {
+      var on = b.getAttribute('data-tema') === t;
+      b.classList.toggle('is-on', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+
+  /* Tamaño de la letra: toda la pantalla un poco más grande, para quien lo necesite */
+  function leerLetra() {
+    try { return window.localStorage.getItem('cuotaclara.letra') || '1'; } catch (e) { return '1'; }
+  }
+  function aplicarLetra(z) {
+    document.documentElement.style.zoom = z === '1' ? '' : z;
+    try { window.localStorage.setItem('cuotaclara.letra', z); } catch (e) { /* sin persistencia */ }
   }
 
   function ciclarTema() {
@@ -262,12 +276,40 @@ CC.ui = (function () {
     aplicarTema(TEMAS[(TEMAS.indexOf(actual) + 1) % TEMAS.length]);
   }
 
+  /**
+   * Una imagen elegida (el logo) lista para guardarse: sobre fondo blanco, para que
+   * un PNG transparente no salga negro, y de máximo ladoMax píxeles.
+   */
+  function imagenEnBlanco(archivo, ladoMax) {
+    return new Promise(function (resolver, rechazar) {
+      var lector = new FileReader();
+      lector.onerror = function () { rechazar(new Error('No se pudo leer el archivo')); };
+      lector.onload = function () {
+        var img = new Image();
+        img.onload = function () {
+          var k = Math.min(1, (ladoMax || 500) / Math.max(img.width || 1, img.height || 1));
+          var lienzo = document.createElement('canvas');
+          lienzo.width = Math.max(1, Math.round((img.width || 300) * k));
+          lienzo.height = Math.max(1, Math.round((img.height || 150) * k));
+          var cx = lienzo.getContext('2d');
+          cx.fillStyle = '#FFFFFF';
+          cx.fillRect(0, 0, lienzo.width, lienzo.height);
+          cx.drawImage(img, 0, 0, lienzo.width, lienzo.height);
+          resolver(lienzo.toDataURL('image/jpeg', 0.9));
+        };
+        img.onerror = function () { rechazar(new Error('El archivo no es una imagen')); };
+        img.src = lector.result;
+      };
+      lector.readAsDataURL(archivo);
+    });
+  }
+
   return {
-    esc: esc, h: h, icono: icono,
+    esc: esc, h: h, icono: icono, imagenEnBlanco: imagenEnBlanco,
     toast: toast, modal: modal, cerrarModal: cerrarModal, confirmar: confirmar, copiar: copiar,
     pedirTexto: pedirTexto, descargarCSV: descargarCSV,
     pill: pill, pillLibre: pillLibre, stats: stats, barras: barras,
     graficaSerie: graficaSerie, leyendaSerie: leyendaSerie,
-    leerTema: leerTema, aplicarTema: aplicarTema, ciclarTema: ciclarTema
+    leerTema: leerTema, aplicarTema: aplicarTema, ciclarTema: ciclarTema, leerLetra: leerLetra, aplicarLetra: aplicarLetra
   };
 })();

@@ -11,6 +11,7 @@ window.CC = window.CC || {};
 CC.vistas = CC.vistas || {};
 
 var folioBuscado = '';
+var filtroBitacora = { quien: 'todos', texto: '' };
 
 /** Todas las series con sus documentos, en la misma forma. */
 function seriesFolios() {
@@ -100,8 +101,18 @@ function pdfDeFolio(d) {
   return C.convenio(d.id);
 }
 
+/** Las líneas de la bitácora que pasan el filtro, la más reciente primero. */
+function lineasBitacora() {
+  var f = filtroBitacora, t = f.texto.trim().toLowerCase();
+  return CC.Store.bitacora().slice().reverse().filter(function (b) {
+    if (f.quien === 'nadie' && b.por) return false;
+    if (f.quien !== 'todos' && f.quien !== 'nadie' && (!b.por || b.por.id !== f.quien)) return false;
+    return !t || (b.accion + ' ' + b.detalle + ' ' + (b.por ? b.por.nombre : '')).toLowerCase().indexOf(t) >= 0;
+  });
+}
+
 CC.vistas.folios = {
-  titulo: 'Folios',
+  titulo: 'Folios y bitácora',
   sub: function () {
     var s = seriesFolios();
     var faltan = s.reduce(function (a, x) { return a + x.faltan.length + x.repetidos.length; }, 0);
@@ -109,7 +120,10 @@ CC.vistas.folios = {
     return total + ' documentos con folio · ' + (faltan ? 'revisar: faltan o se repiten folios' : 'ninguno falta');
   },
   acciones: function () {
-    return [{ texto: 'Exportar a Excel', icono: 'reportes', clase: 'btn btn--ghost', accion: 'exportar' }];
+    return [
+      { texto: 'Folios a Excel', icono: 'reportes', clase: 'btn btn--ghost', accion: 'exportar' },
+      { texto: 'Bitácora a Excel', icono: 'reportes', clase: 'btn btn--ghost', accion: 'exportarBitacora' }
+    ];
   },
 
   render: function () {
@@ -174,11 +188,46 @@ CC.vistas.folios = {
         : '<div class="empty"><strong>Ninguno cancelado</strong><p>Si se cancela un pago o un egreso, aparece aquí con su motivo.</p></div>') +
       '</div>');
 
+    /* --- Bitácora: quién hizo qué --- */
+    var todas = lineasBitacora(), MAX = 300;
+    var personas = CC.Store.usuarios();
+    out.push('<div class="panelbox" id="bitacora"><div class="panelbox__head"><h3>Bitácora: quién hizo qué</h3>' +
+      '<span class="eyebrow">' + todas.length + (todas.length === 1 ? ' movimiento' : ' movimientos') + ' · no se puede borrar</span></div>' +
+      '<div class="panelbox__body formrow" style="border-bottom:1px solid var(--rule)">' +
+      '<select class="input input--sm" id="bQuien" aria-label="Persona" style="max-width:220px"><option value="todos">Todas las personas</option>' +
+      personas.map(function (u) {
+        return '<option value="' + esc(u.id) + '"' + (filtroBitacora.quien === u.id ? ' selected' : '') + '>' + esc(u.nombre) + (u.activo ? '' : ' (de baja)') + '</option>';
+      }).join('') + '<option value="nadie"' + (filtroBitacora.quien === 'nadie' ? ' selected' : '') + '>Sin usuario (antes de las contraseñas)</option></select>' +
+      '<label class="search"><svg class="i"><use href="#i-buscar"/></svg><input class="input input--sm" id="bTexto" value="' + esc(filtroBitacora.texto) +
+      '" placeholder="Buscar: canceló, casa 12, E-0007…" autocomplete="off"></label></div>' +
+      (todas.length
+        ? '<div class="tablewrap"><table class="ledger"><thead><tr><th>Cuándo</th><th>Quién</th><th>Qué hizo</th><th>Detalle</th></tr></thead><tbody>' +
+          todas.slice(0, MAX).map(function (b) {
+            var grave = /^(Canceló|Borró|Eliminó|Condonó|Reabrió|Corrigió|Dio de baja|Abrió una base|Cambió los datos de la cuenta)/.test(b.accion);
+            return '<tr' + (grave ? ' class="row--warn"' : '') + '><td class="mono" style="font-size:12px;white-space:nowrap">' +
+              esc(CC.fmt.fechaCorta(String(b.fecha).slice(0, 10))) + ' ' + esc(String(b.fecha).slice(11, 16)) + '</td>' +
+              '<td>' + (b.por ? esc(b.por.nombre) : '<span class="muted">—</span>') + '</td>' +
+              '<td class="strong">' + esc(b.accion) + '</td><td>' + esc(b.detalle || '') + '</td></tr>';
+          }).join('') + '</tbody></table></div>' +
+          (todas.length > MAX ? '<div class="panelbox__body"><p class="field__hint">Se muestran los ' + MAX + ' más recientes; en Excel van todos.</p></div>' : '')
+        : '<div class="empty"><strong>Sin movimientos</strong><p>Cada pago, egreso, corrección o cancelación queda aquí con quién la hizo.</p></div>') +
+      '</div>');
+
     return out.join('');
   },
 
-  montar: function (raiz) {
+  montar: function (raiz, ctx, redibujar) {
     var esc = CC.ui.esc;
+    raiz.querySelector('#bQuien').onchange = function () { filtroBitacora.quien = this.value; redibujar(); };
+    var bt = raiz.querySelector('#bTexto'), espera = null;
+    bt.oninput = function () {
+      clearTimeout(espera);
+      espera = setTimeout(function () { filtroBitacora.texto = bt.value; redibujar(true); }, 250);
+    };
+    if (ctx.param) {
+      var ancla = raiz.querySelector('#' + ctx.param);
+      if (ancla) setTimeout(function () { ancla.scrollIntoView({ block: 'start' }); }, 60);
+    }
     var inp = raiz.querySelector('#fBuscar');
     var caja = raiz.querySelector('#fResultado');
 
@@ -222,6 +271,13 @@ CC.vistas.folios = {
     raiz.querySelector('#fIr').onclick = buscar;
     inp.onkeydown = function (e) { if (e.key === 'Enter') buscar(); };
     if (folioBuscado) buscar();
+  },
+
+  exportarBitacora: function () {
+    CC.ui.descargarCSV('Bitacora ' + CC.per.hoyISO(), ['Fecha', 'Hora', 'Quién', 'Qué hizo', 'Detalle'],
+      CC.Store.bitacora().map(function (b) {
+        return [String(b.fecha).slice(0, 10), String(b.fecha).slice(11, 19), b.por ? b.por.nombre : '', b.accion, b.detalle || ''];
+      }));
   },
 
   /** Todos los folios en una hoja de Excel, para la auditoría. */

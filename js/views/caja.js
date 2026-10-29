@@ -125,7 +125,8 @@ function formularioArqueo() {
     '<span class="listo__monto num" style="color:var(--ink)">' + esc(CC.fmt.money2(debe)) + '</span></div>' +
     '<div class="formgrid">' +
     '<label class="field"><span class="field__lab">Lo que se contó</span><input class="input num" id="aContado" type="number" min="0" step="0.01"></label>' +
-    '<label class="field"><span class="field__lab">Quién contó</span><input class="input" id="aQuien" placeholder="Tesorero, administración…"></label>' +
+    '<label class="field"><span class="field__lab">Quién contó</span><input class="input" id="aQuien" value="' +
+    esc(CC.Sesion.usuario() ? CC.Sesion.usuario().nombre : '') + '" placeholder="Tesorero, administración…"></label>' +
     '</div>' +
     '<p class="arqueo__dif" id="aDif"></p>' +
     '<label class="field"><span class="field__lab">Nota</span><input class="input" id="aNota" placeholder="Faltan por capturar los recibos del 22"></label>' +

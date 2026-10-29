@@ -28,6 +28,7 @@ CC.vistas.panel = {
   },
 
   avisar: function (ctx) { CC.vistas.adeudos.avisarTodos(ctx); },
+  arqueo: function (ctx) { CC.vistas.caja.arqueo(ctx); },
 
   render: function (ctx) {
     var p = ctx.periodo;
@@ -46,6 +47,29 @@ CC.vistas.panel = {
         'o puedes vaciarlo todo desde <a href="#/ajustes">Ajustes</a>.</div>' +
         '</div>');
     }
+
+    /* --- Mientras falte dar de alta el condominio --- */
+    var faltan = CC.vistas.inicio ? CC.vistas.inicio.pendientes() : 0;
+    if (faltan && !CC.Store.esDemo()) {
+      out.push('<div class="cta cta--inicio"><div class="cta__txt"><strong>' + (faltan === 1 ? 'Falta 1 paso' : 'Faltan ' + faltan + ' pasos') +
+        ' para terminar de dar de alta el condominio.</strong> Las casas, la cuota, lo que debía cada quien y los usuarios.</div>' +
+        '<a class="btn" href="#/inicio">' + CC.ui.icono('inicio', 'i--sm') + ' Seguir con Primeros pasos</a></div>');
+    }
+
+    /* --- Lo de todos los días, a un clic --- */
+    out.push('<div class="atajos" role="navigation" aria-label="Lo de todos los días">' + [
+      ['pago', 'mas', 'Registrar un pago', 'Alguien pagó su cuota'],
+      ['gasto', 'gastos', 'Registrar un egreso', 'Salió dinero, con su comprobante'],
+      ['#/adeudos', 'wa', 'Avisar a quien debe', 'Por WhatsApp o correo'],
+      ['#/unidades', 'unidades', 'Buscar una casa', 'Su estado de cuenta y su historial'],
+      ['arqueo', 'caja', 'Contar la caja chica', 'Ver si cuadra el efectivo'],
+      ['#/folios', 'folios', 'Revisar folios', 'Que no falte ninguno; quién hizo qué']
+    ].map(function (a) {
+      var dentro = CC.ui.icono(a[1]) + '<span><strong>' + esc(a[2]) + '</strong><small>' + esc(a[3]) + '</small></span>';
+      return a[0].charAt(0) === '#'
+        ? '<a class="atajo" href="' + a[0] + '">' + dentro + '</a>'
+        : '<button type="button" class="atajo" data-accion="' + a[0] + '">' + dentro + '</button>';
+    }).join('') + '</div>');
 
     /* --- Casa de prueba: el aviso llega a un WhatsApp de verdad --- */
     var prueba = casaDeMuestra(p);

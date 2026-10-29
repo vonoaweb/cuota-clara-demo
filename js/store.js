@@ -73,7 +73,12 @@ CC.Store = (function () {
     }
   }
 
+  /* Mientras corre una escritura envuelta (ver envolver), guardar espera: se guarda
+     y se redibuja una sola vez al final, ya con su línea en la bitácora. */
+  var envueltas = 0, guardarPendiente = false;
+
   function guardar() {
+    if (envueltas) { guardarPendiente = true; return; }
     estado.meta.actualizado = new Date().toISOString();
     driver.escribir(estado);
     emitir();
@@ -102,6 +107,10 @@ CC.Store = (function () {
     if (!Array.isArray(d.ingresos)) d.ingresos = [];
     if (!Array.isArray(d.proveedores)) d.proveedores = [];
     if (!Array.isArray(d.arqueos)) d.arqueos = [];
+    if (!Array.isArray(d.usuarios)) d.usuarios = [];
+    if (!Array.isArray(d.bitacora)) d.bitacora = [];
+    if (!Array.isArray(d.cierres)) d.cierres = [];
+    if (!Array.isArray(d.entregas)) d.entregas = [];
     if (!d.meta) d.meta = { demo: false, creado: new Date().toISOString() };
     if (typeof d.meta.folioRecibo !== 'number') d.meta.folioRecibo = d.recibos.length;
     if (typeof d.meta.folioCaja !== 'number') d.meta.folioCaja = d.cajaChica.length;
@@ -220,6 +229,160 @@ CC.Store = (function () {
     d.meta.recibosConvertidos = true;
   }
 
+  /* ---------- Quién, cuándo y de qué mes ----------
+     Toda escritura pasa por aquí (envolver, al final): se revisa que quien la hace
+     tenga permiso y que el mes no esté cerrado, y se anota en la bitácora. */
+
+  function quien() {
+    var u = CC.Sesion && CC.Sesion.usuario();
+    return u ? { id: u.id, nombre: u.nombre } : null;
+  }
+
+  function mesCerrado(periodo) {
+    return !!periodo && !!estado && (estado.cierres || []).some(function (c) { return c.periodo === periodo && !c.reabierto; });
+  }
+
+  /** Un error que se le muestra tal cual a quien usa el sistema (app.js lo pone en un aviso). */
+  function Bloqueo(mensaje) { var e = new Error(mensaje); e.bloqueo = true; return e; }
+
+  var MONEDA = function (n) { return CC.fmt.money2(Number(n) || 0); };
+  var F4 = function (pre, n) { return pre + String(n || 0).padStart(4, '0'); };
+  var CASA = function (id) { var u = buscar(estado.unidades, id); return u ? 'casa ' + u.clave : ''; };
+  var PER = function (fecha) { return fecha ? String(fecha).slice(0, 7) : null; };
+  var pagoDe = function (id) { return buscar(estado.pagos, id) || {}; };
+  var gastoDe = function (id) { return buscar(estado.gastos, id) || {}; };
+  var cargoDe = function (id) { return buscar(estado.cargos, id) || {}; };
+  var traspasoDe = function (id) { return buscar(estado.traspasos, id) || {}; };
+  var ingresoDe = function (id) { return buscar(estado.ingresos, id) || {}; };
+  var camposCorregidos = function (o) {
+    var h = (o && o.historial) || [];
+    return h.length ? Object.keys(h[h.length - 1].antes).join(', ') : '';
+  };
+
+  /*
+   * Por cada escritura: rol ('comite' si solo el comité la hace), mes (los meses que
+   * toca, para el candado del cierre), nuevo (al registro se le anota quién lo hizo)
+   * y nota (lo que queda en la bitácora: [qué hizo, detalle]).
+   */
+  var REGLAS = {
+    agregarPago: { nuevo: true, mes: function (p) { return [PER(p.fecha)]; },
+      nota: function (r) { return ['Registró el pago ' + F4('P-', r.folio), CASA(r.unidadId) + ' · ' + MONEDA(r.monto) + ' · ' + (r.metodo || '')]; } },
+    cancelarPago: { mes: function (id) { return [PER(pagoDe(id).fecha)]; },
+      nota: function (r, id, motivo) { var p = pagoDe(id); return ['Canceló el pago ' + F4('P-', p.folio), CASA(p.unidadId) + ' · ' + MONEDA(p.monto) + ' · motivo: ' + (motivo || '—')]; } },
+    agregarCargo: { nuevo: true, mes: function (c) { return [c.periodo]; },
+      nota: function (r) { return ['Cargó ' + (r.concepto || 'un cargo'), CASA(r.unidadId) + ' · ' + MONEDA(r.monto)]; } },
+    agregarCargos: { mes: function (l) { return l.map(function (c) { return c.periodo; }); },
+      nota: function (n, l) { return ['Generó ' + n + (n === 1 ? ' cargo' : ' cargos'), (l[0] && l[0].concepto) || '']; } },
+    editarCargo: { mes: function (id) { return [cargoDe(id).periodo]; },
+      nota: function (r) { return r ? ['Corrigió un cargo', CASA(r.unidadId) + ' · ' + r.concepto + ' · ahora ' + MONEDA(r.monto)] : null; } },
+    condonarCargo: { mes: function (id) { return [cargoDe(id).periodo]; },
+      nota: function (r, id, motivo) { var c = cargoDe(id); return ['Condonó ' + (c.concepto || 'un cargo'), CASA(c.unidadId) + ' · motivo: ' + (motivo || '—')]; } },
+    borrarCargo: { mes: function (id) { return [cargoDe(id).periodo]; }, antes: function (id) { return cargoDe(id); },
+      nota: function (r, id, antes) { return ['Borró un cargo', CASA(antes.unidadId) + ' · ' + (antes.concepto || '') + ' · ' + MONEDA(antes.monto)]; } },
+    agregarGasto: { nuevo: true, mes: function (g) { return [g.periodo, PER(g.fecha)]; },
+      nota: function (r) { return ['Registró el egreso ' + F4('E-', r.folioE), r.concepto + ' · ' + MONEDA(r.monto)]; } },
+    editarGasto: { mes: function (id, c) { var g = gastoDe(id); return [g.periodo, c && PER(c.fecha)]; },
+      nota: function (r) { return r ? ['Corrigió el egreso ' + F4('E-', r.folioE), 'cambió: ' + (camposCorregidos(r) || '—')] : null; } },
+    cancelarGasto: { mes: function (id) { return [gastoDe(id).periodo]; },
+      nota: function (r, id, motivo) { var g = gastoDe(id); return ['Canceló el egreso ' + F4('E-', g.folioE), g.concepto + ' · ' + MONEDA(g.monto) + ' · motivo: ' + (motivo || '—')]; } },
+    revisarGastos: { rol: 'comite',
+      nota: function (r, ids) { return ['Revisó ' + ids.length + (ids.length === 1 ? ' egreso' : ' egresos'), ids.map(function (id) { return F4('E-', gastoDe(id).folioE); }).join(', ')]; } },
+    agregarTraspaso: { nuevo: true, mes: function (t) { return [PER(t.fecha)]; },
+      nota: function (r) { return ['Registró el traspaso ' + F4('T-', r.folio), MONEDA(r.monto)]; } },
+    editarTraspaso: { mes: function (id, c) { return [PER(traspasoDe(id).fecha), c && PER(c.fecha)]; },
+      nota: function (r) { return r ? ['Corrigió el traspaso ' + F4('T-', r.folio), 'cambió: ' + (camposCorregidos(r) || '—')] : null; } },
+    cancelarTraspaso: { mes: function (id) { return [PER(traspasoDe(id).fecha)]; },
+      nota: function (r, id) { var t = traspasoDe(id); return ['Canceló el traspaso ' + F4('T-', t.folio), MONEDA(t.monto)]; } },
+    agregarIngreso: { nuevo: true, mes: function (i) { return [PER(i.fecha)]; },
+      nota: function (r) { return ['Registró el ingreso ' + F4('I-', r.folio), r.concepto + ' · ' + MONEDA(r.monto)]; } },
+    cancelarIngreso: { mes: function (id) { return [PER(ingresoDe(id).fecha)]; },
+      nota: function (r, id) { var i = ingresoDe(id); return ['Canceló el ingreso ' + F4('I-', i.folio), (i.concepto || '') + ' · ' + MONEDA(i.monto)]; } },
+    agregarArqueo: { nuevo: true,
+      nota: function (r) { return ['Contó la caja chica (arqueo)', 'contado ' + MONEDA(r.contado) + ' · diferencia ' + MONEDA(r.diferencia)]; } },
+    actualizarCuenta: { candadoInicial: true,
+      nota: function (r) { return r ? ['Cambió los datos de la cuenta ' + r.nombre, 'saldo inicial ' + MONEDA(r.saldoInicial)] : null; } },
+    agregarUnidad: { nuevo: true, nota: function (r) { return ['Dio de alta la casa ' + r.clave, r.propietario || '']; } },
+    actualizarUnidad: { nota: function (r, id, c) { return r ? ['Cambió los datos de la casa ' + r.clave, Object.keys(c || {}).join(', ')] : null; } },
+    borrarUnidad: { antes: function (id) { return buscar(estado.unidades, id) || {}; },
+      nota: function (r, id, antes) { return r ? ['Eliminó la casa ' + antes.clave, antes.propietario || ''] : null; } },
+    agregarUnidades: { nota: function (n, l) { return ['Dio de alta ' + n + (n === 1 ? ' casa' : ' casas'), l.length ? 'de la ' + l[0].clave + ' a la ' + l[l.length - 1].clave : '']; } },
+    actualizarUnidades: { nota: function (n) { return n ? ['Llenó el padrón', n + (n === 1 ? ' casa' : ' casas') + ' con cambios'] : null; } },
+    ponerSaldosAnteriores: { mes: function (l) { return l.map(function (c) { return c.periodo; }); },
+      nota: function (n, l) {
+        var t = l.reduce(function (a, c) { return a + (Number(c.monto) || 0); }, 0);
+        var casas = {}; l.forEach(function (c) { casas[c.unidadId] = 1; });
+        return ['Puso lo que debía cada casa al empezar', Object.keys(casas).length + ' casas · ' + MONEDA(t)];
+      } },
+    agregarConvenio: { nuevo: true, nota: function (r) { return ['Hizo el convenio ' + F4('CV-', r.folio), CASA(r.unidadId) + ' · ' + MONEDA(r.adeudo)]; } },
+    actualizarConvenio: { nota: function (r, id, c) { return r ? ['Cambió el convenio ' + F4('CV-', r.folio), Object.keys(c || {}).join(', ')] : null; } },
+    actualizarCondominio: { nota: function (r, c) { return ['Cambió los datos del condominio', Object.keys(c || {}).filter(function (k) { return k !== 'logo'; }).join(', ') || 'logo']; } },
+    actualizarCategorias: { nota: function () { return ['Cambió las categorías y el presupuesto', '']; } },
+    agregarUsuario: { rol: 'comite-o-primero',
+      nota: function (r) { return ['Dio de alta al usuario ' + r.nombre, CC.Sesion ? CC.Sesion.nombreRol(r.rol) : r.rol]; } },
+    actualizarUsuario: { rol: 'comite-o-uno-mismo',
+      nota: function (r, id, c) {
+        if (!r) return null;
+        var que = c.activo === false ? 'Dio de baja al usuario ' : c.clave ? 'Cambió la contraseña de ' : 'Cambió el usuario ';
+        return [que + r.nombre, c.rol ? 'ahora: ' + (CC.Sesion ? CC.Sesion.nombreRol(c.rol) : c.rol) : ''];
+      } },
+    cerrarMes: { rol: 'comite', nota: function (r, p) { return ['Cerró el mes de ' + CC.fmt.periodo(p), (r && r.nota) || '']; } },
+    reabrirMes: { rol: 'comite', nota: function (r, p, motivo) { return r ? ['Reabrió el mes de ' + CC.fmt.periodo(p), 'motivo: ' + (motivo || '—')] : null; } },
+    agregarEntrega: { rol: 'comite', nota: function (r) { return ['Hizo la entrega-recepción', (r.entrega || '') + ' entrega a ' + (r.recibe || '')]; } },
+    empezarDeCero: { rol: 'comite', nota: function () { return ['Empezó en blanco con los datos de su condominio', '']; } },
+    importar: { rol: 'comite', nota: function () { return ['Abrió una base de datos desde un archivo', 'reemplazó los datos que había']; } }
+  };
+
+  function envolver(api) {
+    Object.keys(REGLAS).forEach(function (nombre) {
+      var regla = REGLAS[nombre], original = api[nombre];
+      if (typeof original !== 'function') return;
+      api[nombre] = function () {
+        var args = Array.prototype.slice.call(arguments);
+        permiso(nombre, regla, args);
+        if (regla.mes) {
+          var meses = regla.mes.apply(null, args).filter(Boolean);
+          var cerrado = meses.filter(mesCerrado)[0];
+          if (cerrado) throw Bloqueo('El mes de ' + CC.fmt.periodo(cerrado) + ' ya está cerrado. ' +
+            'Si hay que corregir algo, el comité tiene que reabrirlo en Reportes.');
+        }
+        if (regla.candadoInicial && (estado.cierres || []).some(function (c) { return !c.reabierto; })) {
+          throw Bloqueo('Los saldos iniciales ya no se cambian: hay meses cerrados. El comité tendría que reabrirlos.');
+        }
+        var antes = regla.antes ? JSON.parse(JSON.stringify(regla.antes.apply(null, args))) : null;
+        var autor = quien();
+        var r;
+        envueltas++;
+        try { r = original.apply(api, args); } finally { envueltas--; }
+        if (regla.nuevo && r && typeof r === 'object' && autor) r.registradoPor = autor;
+        try {
+          // la nota recibe: lo que regresó, los argumentos y, si la regla lo pide, cómo estaba antes
+          var n = regla.nota.apply(null, [r].concat(args.slice(0, regla.antes ? 1 : args.length), antes ? [antes] : []));
+          if (n) estado.bitacora.push({ fecha: new Date().toISOString(), por: autor, accion: n[0], detalle: n[1] || '' });
+        } catch (e) { /* una nota que no se pudo escribir no detiene la captura */ }
+        // Ya con la nota: se guarda y se redibuja una sola vez
+        if (guardarPendiente && !envueltas) { guardarPendiente = false; guardar(); } else driver.escribir(estado);
+        return r;
+      };
+    });
+  }
+
+  function permiso(nombre, regla, args) {
+    if (!regla.rol || !CC.Sesion || !CC.Sesion.hayUsuarios()) return;
+    var u = CC.Sesion.usuario();
+    if (!u) throw Bloqueo('Primero entra con tu nombre y contraseña.');
+    if (u.rol === 'comite') return;
+    if (regla.rol === 'comite-o-uno-mismo' && args[0] === u.id && args[1] && !args[1].rol && args[1].activo !== false) return;
+    throw Bloqueo('Esto lo hace alguien del comité (' + nombreAccion(nombre) + ').');
+  }
+
+  function nombreAccion(n) {
+    return {
+      revisarGastos: 'revisar egresos', cerrarMes: 'cerrar el mes', reabrirMes: 'reabrir el mes',
+      agregarEntrega: 'entrega-recepción', agregarUsuario: 'dar de alta usuarios', actualizarUsuario: 'cambiar usuarios',
+      empezarDeCero: 'empezar en blanco', importar: 'abrir una base de datos'
+    }[n] || n;
+  }
+
   function buscar(lista, id) {
     for (var i = 0; i < (lista || []).length; i++) if (lista[i].id === id) return lista[i];
     return null;
@@ -235,12 +398,12 @@ CC.Store = (function () {
       if (JSON.stringify(obj[k]) !== JSON.stringify(cambios[k])) { antes[k] = obj[k]; hay = true; }
     });
     if (!hay) return false;
-    obj.historial = (obj.historial || []).concat([{ fecha: new Date().toISOString(), antes: antes }]);
+    obj.historial = (obj.historial || []).concat([{ fecha: new Date().toISOString(), por: quien(), antes: antes }]);
     Object.assign(obj, cambios);
     return true;
   }
 
-  return {
+  var api = {
     /* --- ciclo de vida --- */
     iniciar: function () {
       driver = elegirDriver();
@@ -252,12 +415,15 @@ CC.Store = (function () {
       // jugado con él (registrar un pago de prueba no lo vuelve un condominio
       // real). Un condominio real empieza vacío y no trae "semilla": ese nunca se
       // toca. Por si acaso, la copia anterior se guarda aparte.
-      if (usar && usar.meta && usar.meta.semilla && usar.meta.semilla !== CC.Seed.SEMILLA) {
+      // En el programa del condominio (perfil con produccion: true) no hay ejemplo:
+      // si lo guardado era de ejemplo, se empieza en blanco para que capturen lo suyo.
+      var produccion = !!(CC.Perfil && CC.Perfil.produccion);
+      if (usar && usar.meta && usar.meta.semilla && (produccion || usar.meta.semilla !== CC.Seed.SEMILLA)) {
         try { window.localStorage.setItem(LLAVE + '.anterior', JSON.stringify(usar)); } catch (e) { /* sin espacio */ }
         usar = null;
       }
 
-      estado = usar || migrar(CC.Seed.construir());
+      estado = usar || migrar(produccion ? CC.Seed.vacio(CC.Seed.condominioInicial()) : CC.Seed.construir());
       if (!usar) driver.escribir(estado);
       return estado;
     },
@@ -388,6 +554,9 @@ CC.Store = (function () {
      * captura: no convierte el demo en datos reales.
      */
     sincronizarRecargos: function (crear, actualizar) {
+      // Lo de un mes cerrado ya no se mueve, ni siquiera los recargos automáticos
+      crear = crear.filter(function (c) { return !mesCerrado(c.periodo); });
+      actualizar = actualizar.filter(function (a) { var c = buscar(estado.cargos, a.id); return c && !mesCerrado(c.periodo); });
       if (!crear.length && !actualizar.length) return 0;
       crear.forEach(function (c) { estado.cargos.push(c); });
       actualizar.forEach(function (a) {
@@ -479,6 +648,34 @@ CC.Store = (function () {
       estado.meta.demo = false;
       guardar();
       return u;
+    },
+    /** Varias casas de un jalón (Primeros pasos: crear de la 1 a la 105). */
+    agregarUnidades: function (lista) {
+      lista.forEach(function (u) { u.id = nuevoId('uni'); estado.unidades.push(u); });
+      estado.meta.demo = false;
+      guardar();
+      return lista.length;
+    },
+    /** El padrón completo en una sola guardada: [{ id, cambios }]. */
+    actualizarUnidades: function (lista) {
+      var n = 0;
+      lista.forEach(function (x) {
+        var u = buscar(estado.unidades, x.id);
+        if (u) { Object.assign(u, x.cambios); n++; }
+      });
+      if (n) { estado.meta.demo = false; guardar(); }
+      return n;
+    },
+    /**
+     * Lo que debía cada casa el día que empezaron con el sistema. Reemplaza lo que
+     * se hubiera puesto antes (se puede corregir mientras arrancan).
+     */
+    ponerSaldosAnteriores: function (cargos) {
+      estado.cargos = estado.cargos.filter(function (c) { return c.tipo !== 'inicial'; });
+      cargos.forEach(function (c) { c.id = nuevoId('car'); c.tipo = 'inicial'; estado.cargos.push(c); });
+      estado.meta.demo = false;
+      guardar();
+      return cargos.length;
     },
     actualizarUnidad: function (id, cambios) {
       var u = this.unidad(id);
@@ -809,6 +1006,71 @@ CC.Store = (function () {
       driver.escribir(estado);
       emitir();
     },
+    /* --- usuarios, bitácora, cierre de mes y entrega-recepción --- */
+    usuarios: function () { return estado.usuarios || []; },
+    usuario: function (id) { return buscar(estado.usuarios, id); },
+    agregarUsuario: function (u) {
+      u.id = u.id || nuevoId('usr');
+      u.activo = true;
+      u.creado = new Date().toISOString();
+      estado.usuarios.push(u);
+      estado.meta.demo = false;
+      guardar();
+      return u;
+    },
+    /** Cambiar la contraseña, el papel o dar de baja. Un usuario nunca se borra: queda en la bitácora. */
+    actualizarUsuario: function (id, cambios) {
+      var u = buscar(estado.usuarios, id);
+      if (u) { Object.assign(u, cambios); guardar(); }
+      return u;
+    },
+    bitacora: function () { return estado.bitacora || []; },
+    /** Una línea en la bitácora sin más cambio (entrar, salir, bajar el acta de entrega). */
+    anotar: function (accion, detalle) {
+      if (!estado) return;
+      estado.bitacora.push({ fecha: new Date().toISOString(), por: quien(), accion: accion, detalle: detalle || '' });
+      driver.escribir(estado);
+    },
+
+    cierres: function () { return estado.cierres || []; },
+    mesCerrado: function (periodo) { return mesCerrado(periodo); },
+    /** El cierre vigente de un mes (null si está abierto). */
+    cierre: function (periodo) {
+      return (estado.cierres || []).filter(function (c) { return c.periodo === periodo && !c.reabierto; })[0] || null;
+    },
+    cerrarMes: function (periodo, datos) {
+      var c = Object.assign({ id: nuevoId('cie'), periodo: periodo, fecha: new Date().toISOString(), por: quien() }, datos || {});
+      estado.cierres.push(c);
+      estado.meta.demo = false;
+      guardar();
+      return c;
+    },
+    reabrirMes: function (periodo, motivo) {
+      var c = this.cierre(periodo);
+      if (!c) return null;
+      c.reabierto = { fecha: new Date().toISOString(), por: quien(), motivo: motivo || '' };
+      guardar();
+      return c;
+    },
+    entregas: function () { return estado.entregas || []; },
+    agregarEntrega: function (e) {
+      e.id = nuevoId('ent');
+      e.fecha = e.fecha || new Date().toISOString();
+      e.por = quien();
+      estado.entregas.push(e);
+      estado.meta.demo = false;
+      guardar();
+      return e;
+    },
+    /** Los pasos del arranque que ya se hicieron (Primeros pasos). */
+    marcarArranque: function (paso, valor) {
+      estado.meta.arranque = estado.meta.arranque || {};
+      estado.meta.arranque[paso] = valor === undefined ? new Date().toISOString() : valor;
+      guardar();
+    },
     nuevoId: nuevoId
   };
+
+  envolver(api);
+  return api;
 })();

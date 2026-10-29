@@ -878,7 +878,7 @@ CC.Model = (function () {
       var t = l.cargo.tipo;
       meses[p].partes.push({
         etiqueta: t === 'cuota' ? 'cuota' : t === 'recargo' ? 'recargo' : t === 'extraordinaria' ? 'extraordinaria'
-          : t === 'multa' ? 'multa' : t === 'casaclub' ? 'casa club' : 'otro cargo',
+          : t === 'multa' ? 'multa' : t === 'casaclub' ? 'casa club' : t === 'inicial' ? 'saldo anterior' : 'otro cargo',
         monto: l.pendiente, concepto: l.cargo.concepto, tipo: t
       });
       meses[p].cargos.push(l.cargo.id);

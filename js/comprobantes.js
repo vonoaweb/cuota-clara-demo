@@ -49,7 +49,8 @@ CC.Comprobantes = (function () {
     if (l3) doc.texto(recortar(doc, l3, anchoNom, { tam: 8.5 }), x0, M + 35, { tam: 8.5, color: GRIS });
     var X = doc.ancho - M;
     doc.texto(tipo.toUpperCase(), X, M + 8, { tam: 8, negrita: true, color: ACENTO, alinear: 'der' });
-    doc.texto('Folio ' + fol, X, M + 23, { tam: 13, negrita: true, color: TINTA, alinear: 'der' });
+    // "P-0012" lleva la palabra Folio; "Casa 12" o "Noviembre 2026" van tal cual
+    doc.texto((/^[A-Z]{1,2}-\d/.test(fol) ? 'Folio ' : '') + fol, X, M + 23, { tam: 13, negrita: true, color: TINTA, alinear: 'der' });
     doc.texto('Fecha: ' + CC.fmt.fechaCorta(fecha), X, M + 35, { tam: 8.5, color: GRIS, alinear: 'der' });
     doc.linea(M, M + 45, doc.ancho - M, M + 45, { grosor: 1.1, color: TINTA });
     return M + 45;
@@ -494,6 +495,204 @@ CC.Comprobantes = (function () {
     return l.join('\n');
   }
 
+  /* ---------- Hoja de arranque (carta, para firmar) ---------- */
+
+  /**
+   * Todo lo que se capturó para arrancar con el sistema: reglas, saldos y lo que
+   * debía cada casa. La firman la administración y el comité (la administradora lo
+   * pidió en la reunión: "que me den el visto bueno… y que lo revisen").
+   */
+  function hojaArranque() {
+    return cargarLogo().then(function (logo) {
+      var c = CC.Store.condominio();
+      var inicio = c.inicio || CC.per.hoy();
+      var doc = CC.PDF.nuevo({ titulo: 'Hoja de arranque · ' + (c.nombre || 'Condominio') });
+      var ancho = doc.ancho - 2 * M, LIMITE = doc.alto - 56;
+      var y = encabezado(doc, 'Hoja de arranque', CC.fmt.periodo(inicio), CC.per.hoyISO(), logo) + 30;
+      doc.texto('Con esto arranca el sistema', M, y, { tam: 15, negrita: true, color: TINTA });
+      y = doc.parrafo('Lo que se capturó para empezar a cobrar con Cuota Clara en ' + CC.fmt.periodo(inicio).toLowerCase() +
+        '. Revísenlo contra lo que tenían antes; si algo no coincide, se corrige antes de firmar.', M, y + 16, ancho, { tam: 9.5, color: TINTA2 }) + 10;
+
+      function titulo(t) {
+        if (y + 40 > LIMITE) { doc.nuevaPagina(); y = M + 10; }
+        doc.texto(t.toUpperCase(), M, y, { tam: 7.5, negrita: true, color: ACENTO });
+        doc.linea(M, y + 5, M + ancho, y + 5, { grosor: 0.5, color: LINEA });
+        y += 20;
+      }
+      function fila(et, val) {
+        if (y + 16 > LIMITE) { doc.nuevaPagina(); y = M + 10; }
+        y = dato(doc, y, et, val, { ancho: ancho - 88, tam: 9.5 });
+      }
+
+      var tramos = c.recargoModo === 'tramos' && (c.recargoTramos || []).length
+        ? c.recargoTramos.map(function (t) { return 'desde el día ' + t.dia + ', ' + CC.fmt.money2(t.monto); }).join('; ')
+        : c.recargoModo === 'porcentaje' && c.tasaMoraMensual ? c.tasaMoraMensual + '% mensual' : 'sin recargos';
+      titulo('El condominio');
+      fila('Nombre', c.nombre);
+      fila('Dirección', [c.direccion, c.ciudad].filter(Boolean).join(', '));
+      fila('Administra', c.administrador);
+      fila('Cuenta de pago', c.cuenta);
+      titulo('Reglas de cobro');
+      fila('Cuota mensual', c.cuotaCasa ? CC.fmt.money2(c.cuotaCasa) + ' por casa' : 'la de cada casa');
+      fila('Fecha límite', 'el día ' + c.diaVencimiento + ' de cada mes');
+      fila('Recargos', tramos);
+      fila('Empiezan', CC.fmt.periodo(inicio));
+
+      titulo('Saldos con los que empiezan');
+      CC.Store.cuentas().forEach(function (cu) { fila(cu.nombre, CC.fmt.money2(cu.saldoInicial || 0)); });
+
+      var casas = CC.Store.unidades().slice().sort(CC.Model.ordenCasas);
+      var cuenta = function (k) { return casas.filter(function (u) { return u[k]; }).length; };
+      titulo('Las casas');
+      fila('Casas', casas.length + ' · con dueño ' + cuenta('propietario') + ' · con teléfono ' + cuenta('telefono') + ' · con correo ' + cuenta('email'));
+
+      var debe = {};
+      CC.Store.cargos().filter(function (x) { return x.tipo === 'inicial'; }).forEach(function (x) {
+        var d = debe[x.unidadId] = debe[x.unidadId] || { monto: 0, meses: 0 };
+        d.monto += Number(x.monto) || 0; d.meses++;
+      });
+      var conDeuda = casas.filter(function (u) { return debe[u.id]; });
+      var total = conDeuda.reduce(function (a, u) { return a + debe[u.id].monto; }, 0);
+      titulo('Lo que debía cada casa al empezar');
+      fila('Total', conDeuda.length ? conDeuda.length + (conDeuda.length === 1 ? ' casa debe ' : ' casas deben ') + CC.fmt.money2(total) : 'Ninguna casa debía');
+      if (conDeuda.length) {
+        var cab = function () {
+          doc.rect(M, y, ancho, 18, { relleno: SUAVE });
+          var o = { tam: 7.2, negrita: true, color: ACENTO };
+          doc.texto('CASA', M + 8, y + 12, o);
+          doc.texto('DUEÑO', M + 70, y + 12, o);
+          doc.texto('MESES', M + 390, y + 12, Object.assign({ alinear: 'der' }, o));
+          doc.texto('DEBE', M + ancho - 8, y + 12, Object.assign({ alinear: 'der' }, o));
+          y += 18;
+        };
+        y += 4;
+        cab();
+        conDeuda.forEach(function (u) {
+          if (y + 16 > LIMITE) { doc.nuevaPagina(); y = M + 10; cab(); }
+          doc.texto(u.clave, M + 8, y + 11.5, { tam: 9, negrita: true, color: TINTA });
+          doc.texto(recortar(doc, u.propietario || '—', 300, { tam: 9 }), M + 70, y + 11.5, { tam: 9, color: TINTA2 });
+          doc.texto(String(debe[u.id].meses), M + 390, y + 11.5, { tam: 9, color: TINTA2, alinear: 'der' });
+          doc.texto(CC.fmt.money2(debe[u.id].monto), M + ancho - 8, y + 11.5, { tam: 9, color: TINTA, alinear: 'der' });
+          doc.linea(M, y + 16, M + ancho, y + 16, { grosor: 0.3, color: LINEA });
+          y += 16;
+        });
+        y += 18;
+      }
+
+      var us = CC.Store.usuarios().filter(function (u) { return u.activo; });
+      if (us.length) {
+        titulo('Quiénes usan el sistema');
+        us.forEach(function (u) { fila(CC.Sesion.nombreRol(u.rol), u.nombre); });
+      }
+
+      if (y + 110 > LIMITE) { doc.nuevaPagina(); y = M + 30; }
+      var yF = Math.max(y + 80, LIMITE - 40), w = (ancho - 40) / 3;
+      var admin = us.filter(function (u) { return u.rol === 'admin'; })[0];
+      var comite = us.filter(function (u) { return u.rol === 'comite'; });
+      firma(doc, M, yF, w, null, admin ? admin.nombre : (c.administrador || ''), 'Elaboró (administración)');
+      firma(doc, M + w + 20, yF, w, null, comite[0] ? comite[0].nombre : '', 'Visto bueno (comité)');
+      firma(doc, M + 2 * (w + 20), yF, w, null, comite[1] ? comite[1].nombre : '', 'Visto bueno (comité)');
+      pie(doc, 'Hoja de arranque de ' + (c.nombre || 'el condominio') + ' · generada el ' + CC.fmt.fechaCorta(CC.per.hoyISO()) + '.');
+      return { doc: doc, nombre: CC.PDF.nombreArchivo('Hoja de arranque ' + (c.nombre || '')) };
+    });
+  }
+
+  /* ---------- Acta de entrega-recepción (carta, para firmar) ---------- */
+
+  function actaEntrega(entregaId) {
+    var e = CC.Store.entregas().filter(function (x) { return x.id === entregaId; })[0];
+    if (!e) return Promise.reject(new Error('No se encontró la entrega.'));
+    return cargarLogo().then(function (logo) {
+      var c = CC.Store.condominio();
+      var hoyISO = String(e.fecha).slice(0, 10);
+      var doc = CC.PDF.nuevo({ titulo: 'Acta de entrega-recepción · ' + (c.nombre || '') });
+      var ancho = doc.ancho - 2 * M, LIMITE = doc.alto - 56;
+      var y = encabezado(doc, 'Entrega-recepción', CC.fmt.fechaCorta(hoyISO), hoyISO, logo) + 30;
+      doc.texto('Acta de entrega-recepción de la administración', M, y, { tam: 15, negrita: true, color: TINTA });
+      y = doc.parrafo('En ' + (c.ciudad || '________') + ', el ' + CC.fmt.fechaLarga(hoyISO) + ', ' + e.entrega + ' entrega la administración de ' +
+        (c.nombre || 'el condominio') + ' a ' + e.recibe + (e.comite ? ', ante ' + e.comite + ' por el comité' : '') +
+        '. Lo que sigue sale del sistema Cuota Clara ese mismo día; el efectivo de la caja chica se contó frente a los presentes.',
+        M, y + 16, ancho, { tam: 9.5, color: TINTA2 }) + 10;
+
+      function titulo(t) {
+        if (y + 44 > LIMITE) { doc.nuevaPagina(); y = M + 10; }
+        doc.texto(t.toUpperCase(), M, y, { tam: 7.5, negrita: true, color: ACENTO });
+        doc.linea(M, y + 5, M + ancho, y + 5, { grosor: 0.5, color: LINEA });
+        y += 20;
+      }
+      function fila(et, val, o) {
+        if (y + 16 > LIMITE) { doc.nuevaPagina(); y = M + 10; }
+        y = dato(doc, y, et, val, Object.assign({ ancho: ancho - 88, tam: 9.5 }, o || {}));
+      }
+
+      titulo('1. El dinero');
+      fila('Banco', CC.fmt.money2(e.banco) + ' según el sistema (comparar con el estado de cuenta)');
+      fila('Caja chica', 'según el sistema ' + CC.fmt.money2(e.cajaSistema) + ' · contado ' + CC.fmt.money2(e.cajaContado) +
+        (Math.abs(e.diferencia) < 0.005 ? ' · cuadra' : ' · ' + (e.diferencia < 0 ? 'faltan ' : 'sobran ') + CC.fmt.money2(Math.abs(e.diferencia))),
+        { negrita: Math.abs(e.diferencia) >= 0.005, color: Math.abs(e.diferencia) >= 0.005 ? MAL : TINTA });
+
+      titulo('2. Folios');
+      (typeof seriesFolios === 'function' ? seriesFolios() : []).forEach(function (s) {
+        var t = s.ultimo ? 'del ' + textoFolio(s, 1) + ' al ' + textoFolio(s, s.ultimo) + ' · ' + s.cancelados.length + ' cancelados · ' +
+          (s.faltan.length ? 'FALTAN ' + s.faltan.map(function (n) { return textoFolio(s, n); }).join(', ') : 'no falta ninguno') : 'ninguno emitido';
+        fila({ 'P-': 'Pagos', 'E-': 'Egresos', 'I-': 'Ingresos', 'T-': 'Traspasos', 'CV-': 'Convenios' }[s.pre] || s.nombre, t,
+          { color: s.faltan.length ? MAL : TINTA });
+      });
+      var cerrados = CC.Store.cierres().filter(function (x) { return !x.reabierto; }).map(function (x) { return x.periodo; }).sort();
+      fila('Meses cerrados', cerrados.length ? 'hasta ' + CC.fmt.periodo(cerrados[cerrados.length - 1]) : 'ninguno todavía');
+
+      var pad = CC.Model.padron(CC.per.hoy()).filter(function (x) { return x.situacion.saldo > 0.005; })
+        .sort(function (a, b) { return CC.Model.ordenCasas(a.unidad, b.unidad); });
+      var tot = pad.reduce(function (a, x) { return a + x.situacion.saldo; }, 0);
+      titulo('3. Quién debe');
+      fila('Total', pad.length ? pad.length + (pad.length === 1 ? ' casa debe ' : ' casas deben ') + CC.fmt.money2(tot) : 'Nadie debe');
+      if (pad.length) {
+        var cab = function () {
+          doc.rect(M, y, ancho, 18, { relleno: SUAVE });
+          var o = { tam: 7.2, negrita: true, color: ACENTO };
+          doc.texto('CASA', M + 8, y + 12, o);
+          doc.texto('DUEÑO', M + 70, y + 12, o);
+          doc.texto('DEBE DESDE', M + 330, y + 12, o);
+          doc.texto('DEBE', M + ancho - 8, y + 12, Object.assign({ alinear: 'der' }, o));
+          y += 18;
+        };
+        y += 4; cab();
+        pad.forEach(function (x) {
+          if (y + 16 > LIMITE) { doc.nuevaPagina(); y = M + 10; cab(); }
+          doc.texto(x.unidad.clave, M + 8, y + 11.5, { tam: 9, negrita: true, color: TINTA });
+          doc.texto(recortar(doc, x.unidad.propietario || '—', 245, { tam: 9 }), M + 70, y + 11.5, { tam: 9, color: TINTA2 });
+          doc.texto(x.situacion.desde ? CC.fmt.periodo(x.situacion.desde) : '—', M + 330, y + 11.5, { tam: 9, color: TINTA2 });
+          doc.texto(CC.fmt.money2(x.situacion.saldo), M + ancho - 8, y + 11.5, { tam: 9, color: TINTA, alinear: 'der' });
+          doc.linea(M, y + 16, M + ancho, y + 16, { grosor: 0.3, color: LINEA });
+          y += 16;
+        });
+        y += 18;
+      }
+
+      var vig = CC.Model.gastosVigentes();
+      var porPagar = vig.filter(function (g) { return g.estado === 'pendiente'; });
+      var convenios = CC.Store.convenios().filter(function (cv) { return cv.estado === 'activo'; });
+      titulo('4. Lo que queda pendiente');
+      fila('Egresos por pagar', porPagar.length ? porPagar.map(function (g) { return folio('E-', g.folioE) + ' ' + g.concepto + ' ' + CC.fmt.money2(g.monto); }).join('; ') : 'ninguno');
+      var nEg = function (n) { return n + (n === 1 ? ' egreso' : ' egresos'); };
+      fila('Sin revisar', nEg(vig.filter(function (g) { return !g.revision; }).length));
+      fila('Sin comprobante', nEg(vig.filter(function (g) { return !g.fotoId; }).length));
+      fila('Convenios activos', convenios.length ? convenios.map(function (cv) {
+        var u = CC.Store.unidad(cv.unidadId); return folio('CV-', cv.folio) + ' casa ' + (u ? u.clave : '—');
+      }).join('; ') : 'ninguno');
+      if (e.nota) { titulo('5. Notas'); fila('Se entrega', e.nota); }
+
+      if (y + 110 > LIMITE) { doc.nuevaPagina(); y = M + 30; }
+      var yF = Math.max(y + 80, LIMITE - 40), w = (ancho - 40) / 3;
+      firma(doc, M, yF, w, null, e.entrega, 'Entrega');
+      firma(doc, M + w + 20, yF, w, null, e.recibe, 'Recibe');
+      firma(doc, M + 2 * (w + 20), yF, w, null, e.comite || '', 'Por el comité');
+      pie(doc, 'Acta de entrega-recepción · ' + (c.nombre || '') + ' · ' + CC.fmt.fechaCorta(hoyISO) + '.');
+      CC.Store.anotar('Bajó el acta de entrega-recepción', e.entrega + ' a ' + e.recibe);
+      return { doc: doc, nombre: CC.PDF.nombreArchivo('Acta de entrega-recepcion ' + hoyISO) };
+    });
+  }
+
   /* ---------- Salida ---------- */
 
   function descargar(promesa, silencioso) {
@@ -547,6 +746,8 @@ CC.Comprobantes = (function () {
     textoReciboPago: textoReciboPago,
     reciboEgreso: reciboEgreso,
     reciboIngreso: reciboIngreso,
+    hojaArranque: hojaArranque,
+    actaEntrega: actaEntrega,
     polizaTraspaso: polizaTraspaso,
     estadoCuenta: estadoCuenta,
     textoEstadoCuenta: textoEstadoCuenta,

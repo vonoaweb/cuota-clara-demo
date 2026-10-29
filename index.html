@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@600;700&display=swap">
-<link rel="stylesheet" href="css/app.css?v=2026102741">
+<link rel="stylesheet" href="css/app.css?v=2026102902">
 <!--ARTIFACT:HEAD-END-->
 </head>
 <body>
@@ -27,6 +27,9 @@
   <symbol id="i-recibos" viewBox="0 0 24 24"><path d="M6 21V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v17l-3-2-3 2-3-2Z"/><path d="M9.5 8h5M9.5 12h5"/></symbol>
   <symbol id="i-difusion" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 6.5 8.5 6 8.5-6"/></symbol>
   <symbol id="i-reglamento" viewBox="0 0 24 24"><path d="M4 19.5V5a2 2 0 0 1 2-2h12.5v16H6a2 2 0 0 0-2 2V19.5Z"/><path d="M8 7.5h7M8 11h7M8 14.5h4"/></symbol>
+  <symbol id="i-inicio" viewBox="0 0 24 24"><path d="M5 12.5 10 17l9-10"/></symbol>
+  <symbol id="i-ayuda" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.4a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.7"/><path d="M12 16.9v.1"/></symbol>
+  <symbol id="i-candado" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/></symbol>
   <symbol id="i-folios" viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6Z"/><path d="M10.5 9 9.5 17M14.5 9l-1 8M8.5 11.5h7.5M8 14.5h7.5"/></symbol>
   <symbol id="i-buscar" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></symbol>
   <symbol id="i-cerrar" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
@@ -53,37 +56,53 @@
     </div>
 
     <nav class="nav__list" aria-label="Secciones">
+      <a class="nav__item nav__item--inicio" data-route="inicio" href="#/inicio" hidden><svg class="i"><use href="#i-inicio"/></svg><span>Primeros pasos</span><em class="nav__badge nav__badge--ok" id="badgeInicio"></em></a>
       <a class="nav__item" data-route="panel" href="#/panel"><svg class="i"><use href="#i-panel"/></svg><span>Panel</span></a>
+
+      <p class="nav__grupo">Cobrar</p>
       <a class="nav__item" data-route="unidades" href="#/unidades"><svg class="i"><use href="#i-unidades"/></svg><span>Casas</span></a>
       <a class="nav__item" data-route="cobranza" href="#/cobranza"><svg class="i"><use href="#i-cobranza"/></svg><span>Cobranza</span></a>
       <a class="nav__item" data-route="adeudos" href="#/adeudos"><svg class="i"><use href="#i-adeudos"/></svg><span>Adeudos</span><em class="nav__badge" id="badgeMorosos" hidden></em></a>
+
+      <p class="nav__grupo">Gastos y dinero</p>
       <a class="nav__item" data-route="gastos" href="#/gastos"><svg class="i"><use href="#i-gastos"/></svg><span>Egresos</span></a>
       <a class="nav__item" data-route="caja" href="#/caja"><svg class="i"><use href="#i-caja"/></svg><span>Banco y caja</span></a>
+      <a class="nav__item" data-route="recibos" href="#/recibos"><svg class="i"><use href="#i-recibos"/></svg><span>Recibos firmados</span></a>
+
+      <p class="nav__grupo">Avisar</p>
+      <a class="nav__item" data-route="difusion" href="#/difusion"><svg class="i"><use href="#i-difusion"/></svg><span>Difusión</span></a>
+      <a class="nav__item" data-route="avisos" href="#/avisos"><svg class="i"><use href="#i-avisos"/></svg><span>Avisos</span></a>
+
+      <p class="nav__grupo">Revisar</p>
+      <a class="nav__item" data-route="reportes" href="#/reportes"><svg class="i"><use href="#i-reportes"/></svg><span>Reportes y cierre</span></a>
+      <a class="nav__item" data-route="folios" href="#/folios"><svg class="i"><use href="#i-folios"/></svg><span>Folios y bitácora</span></a>
+
+      <p class="nav__grupo">Condominio</p>
       <a class="nav__item" data-route="reservas" href="#/reservas" hidden><svg class="i"><use href="#i-reservas"/></svg><span>Reservas</span></a>
       <a class="nav__item" data-route="visitas" href="#/visitas" hidden><svg class="i"><use href="#i-visitas"/></svg><span>Visitas</span></a>
-      <a class="nav__item" data-route="recibos" href="#/recibos"><svg class="i"><use href="#i-recibos"/></svg><span>Recibos firmados</span></a>
-      <a class="nav__item" data-route="difusion" href="#/difusion"><svg class="i"><use href="#i-difusion"/></svg><span>Difusión</span></a>
-      <a class="nav__item" data-route="reportes" href="#/reportes"><svg class="i"><use href="#i-reportes"/></svg><span>Reportes</span></a>
-      <a class="nav__item" data-route="folios" href="#/folios"><svg class="i"><use href="#i-folios"/></svg><span>Folios</span></a>
       <a class="nav__item" data-route="reglamento" href="#/reglamento"><svg class="i"><use href="#i-reglamento"/></svg><span>Reglamento</span></a>
-      <a class="nav__item" data-route="avisos" href="#/avisos"><svg class="i"><use href="#i-avisos"/></svg><span>Avisos</span></a>
       <a class="nav__item" data-route="ajustes" href="#/ajustes"><svg class="i"><use href="#i-ajustes"/></svg><span>Ajustes</span></a>
+      <a class="nav__item" data-route="ayuda" href="#/ayuda"><svg class="i"><use href="#i-ayuda"/></svg><span>Ayuda y manual</span></a>
     </nav>
 
     <div class="nav__foot">
+      <div class="nav__usuario" id="navUsuario" hidden></div>
       <a class="nav__portal" data-route="portal" href="#/portal">
         <svg class="i"><use href="#i-portal"/></svg>
         <span><strong>Portal del residente</strong><small>Lo que ve el vecino</small></span>
       </a>
-      <button class="ghostbtn" id="btnTema" type="button" title="Cambiar tema">
-        <svg class="i"><use href="#i-tema"/></svg><span>Tema</span>
-      </button>
+      <div class="tema" role="group" aria-label="Colores de la pantalla">
+        <button type="button" data-tema="claro" title="Fondo blanco">Claro</button>
+        <button type="button" data-tema="oscuro" title="Fondo oscuro, para de noche">Oscuro</button>
+        <button type="button" data-tema="sistema" title="Igual que la computadora">Auto</button>
+      </div>
     </div>
   </aside>
 
   <main class="main" id="main">
     <header class="topbar">
       <div class="topbar__id">
+        <p class="topbar__candado" id="topCandado" hidden><svg class="i i--sm"><use href="#i-candado"/></svg><span></span></p>
         <h1 id="topTitle">Panel</h1>
         <p id="topSub" class="topbar__sub"></p>
       </div>
@@ -93,6 +112,7 @@
           <select id="selPeriodo" class="input input--sm"></select>
         </label>
         <div id="topActions" class="topbar__actions"></div>
+        <a class="btn btn--ghost btn--icono" id="topAyuda" href="#/ayuda" title="Cómo se usa esta pantalla"><svg class="i i--sm"><use href="#i-ayuda"/></svg><span>Ayuda</span></a>
       </div>
     </header>
 
@@ -129,35 +149,39 @@
 
 <div class="toasts" id="toasts" aria-live="polite"></div>
 
-<script src="js/format.js?v=2026102741"></script>
-<script src="js/perfil.js?v=2026102741"></script>
-<script src="js/archivos.js?v=2026102741"></script>
-<script src="js/pdf.js?v=2026102741"></script>
-<script src="js/store.js?v=2026102741"></script>
-<script src="js/escritorio.js?v=2026102741"></script>
-<script src="js/seed.js?v=2026102741"></script>
-<script src="js/model.js?v=2026102741"></script>
-<script src="js/ui.js?v=2026102741"></script>
-<script src="js/importar.js?v=2026102741"></script>
-<script src="js/comprobantes.js?v=2026102741"></script>
-<script src="js/demo.js?v=2026102741"></script>
-<script src="js/views/panel.js?v=2026102741"></script>
-<script src="js/views/unidades.js?v=2026102741"></script>
-<script src="js/views/cobranza.js?v=2026102741"></script>
-<script src="js/views/adeudos.js?v=2026102741"></script>
-<script src="js/views/gastos.js?v=2026102741"></script>
-<script src="js/views/caja.js?v=2026102741"></script>
-<script src="js/views/reservas.js?v=2026102741"></script>
-<script src="js/views/visitas.js?v=2026102741"></script>
-<script src="js/views/recibos.js?v=2026102741"></script>
-<script src="js/views/difusion.js?v=2026102741"></script>
-<script src="js/views/reglamento.js?v=2026102741"></script>
-<script src="js/views/reportes.js?v=2026102741"></script>
-<script src="js/views/folios.js?v=2026102741"></script>
-<script src="js/views/avisos.js?v=2026102741"></script>
-<script src="js/views/ajustes.js?v=2026102741"></script>
-<script src="js/views/portal.js?v=2026102741"></script>
-<script src="js/app.js?v=2026102741"></script>
+<script src="js/format.js?v=2026102902"></script>
+<script src="js/perfil.js?v=2026102902"></script>
+<script src="js/archivos.js?v=2026102902"></script>
+<script src="js/pdf.js?v=2026102902"></script>
+<script src="js/store.js?v=2026102902"></script>
+<script src="js/escritorio.js?v=2026102902"></script>
+<script src="js/seed.js?v=2026102902"></script>
+<script src="js/model.js?v=2026102902"></script>
+<script src="js/ui.js?v=2026102902"></script>
+<script src="js/sesion.js?v=2026102902"></script>
+<script src="js/importar.js?v=2026102902"></script>
+<script src="js/comprobantes.js?v=2026102902"></script>
+<script src="js/cierre.js?v=2026102902"></script>
+<script src="js/demo.js?v=2026102902"></script>
+<script src="js/views/inicio.js?v=2026102902"></script>
+<script src="js/views/panel.js?v=2026102902"></script>
+<script src="js/views/unidades.js?v=2026102902"></script>
+<script src="js/views/cobranza.js?v=2026102902"></script>
+<script src="js/views/adeudos.js?v=2026102902"></script>
+<script src="js/views/gastos.js?v=2026102902"></script>
+<script src="js/views/caja.js?v=2026102902"></script>
+<script src="js/views/reservas.js?v=2026102902"></script>
+<script src="js/views/visitas.js?v=2026102902"></script>
+<script src="js/views/recibos.js?v=2026102902"></script>
+<script src="js/views/difusion.js?v=2026102902"></script>
+<script src="js/views/reglamento.js?v=2026102902"></script>
+<script src="js/views/reportes.js?v=2026102902"></script>
+<script src="js/views/folios.js?v=2026102902"></script>
+<script src="js/views/avisos.js?v=2026102902"></script>
+<script src="js/views/ajustes.js?v=2026102902"></script>
+<script src="js/views/portal.js?v=2026102902"></script>
+<script src="js/views/ayuda.js?v=2026102902"></script>
+<script src="js/app.js?v=2026102902"></script>
 <!--ARTIFACT:BODY-END-->
 </body>
 </html>

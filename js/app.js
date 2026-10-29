@@ -28,7 +28,9 @@
 
   /* ---------- Enrutador ---------- */
   function leerHash() {
-    var h = (location.hash || '#/panel').replace(/^#\/?/, '');
+    // Mientras no terminen de dar de alta el condominio, se abre en Primeros pasos
+    var inicial = CC.vistas.inicio && CC.Store.unidades().length === 0 && CC.vistas.inicio.pendientes() > 0 ? '#/inicio' : '#/panel';
+    var h = (location.hash || inicial).replace(/^#\/?/, '');
     var partes = h.split('/').filter(Boolean);
     var nombre = partes[0] || 'panel';
     if (!CC.vistas[nombre]) nombre = 'panel';
@@ -95,10 +97,29 @@
     var hayVisitas = !!CC.Store.condominio().registroVisitas;
     document.querySelectorAll('[data-route="visitas"]').forEach(function (a) { a.hidden = !hayVisitas; });
 
+    // Primeros pasos: a la vista mientras falte algo, con cuántos pasos faltan
+    var faltan = CC.vistas.inicio ? CC.vistas.inicio.pendientes() : 0;
+    document.querySelectorAll('[data-route="inicio"]').forEach(function (a) { a.hidden = !faltan && ruta.nombre !== 'inicio'; });
+    var bi = document.getElementById('badgeInicio');
+    if (bi) { bi.textContent = faltan ? String(faltan) : '✓'; bi.title = faltan ? 'Faltan ' + faltan + ' pasos' : 'Listo'; }
+
+    // El mes que se está viendo, si ya lo cerró el comité
+    var cierre = CC.Store.cierre(periodoActivo);
+    var candado = document.getElementById('topCandado');
+    candado.hidden = !cierre;
+    if (cierre) candado.querySelector('span').textContent = CC.fmt.periodo(periodoActivo) + ' está cerrado' +
+      (cierre.por ? ' (lo cerró ' + cierre.por.nombre + ')' : '') + ': se puede ver, pero ya no se cambia';
+
+    // Ayuda de esta pantalla
+    document.getElementById('topAyuda').href = '#/ayuda/' + (NAV_DE_RUTA[ruta.nombre] || ruta.nombre);
+    document.getElementById('topAyuda').hidden = ruta.nombre === 'ayuda';
+
     marcarNavegacion();
     actualizarBadge();
     llenarPeriodos();
+    CC.Sesion.pintarUsuario();
   }
+  CC.redibujar = function () { dibujar(); };
 
   function marcarNavegacion() {
     var activa = NAV_DE_RUTA[ruta.nombre] || ruta.nombre;
@@ -126,8 +147,12 @@
         var nombre = a.querySelector('strong') ? a.querySelector('strong').textContent : a.querySelector('span').textContent;
         return '<a class="mas__item' + (a.classList.contains('is-on') ? ' is-on' : '') + '" href="#/' + ruta + '">' +
           CC.ui.icono(icono) + '<span>' + CC.ui.esc(nombre) + '</span></a>';
-      }).join('') + '</nav>';
+      }).join('') + '</nav>' +
+      '<div class="tema tema--mas" role="group" aria-label="Colores de la pantalla">' +
+      '<button type="button" data-tema="claro">Claro</button><button type="button" data-tema="oscuro">Oscuro</button>' +
+      '<button type="button" data-tema="sistema">Auto</button></div>';
     CC.ui.modal('Secciones', html, function (cuerpo) {
+      CC.ui.aplicarTema(CC.ui.leerTema());   // marca el tema elegido
       cuerpo.querySelectorAll('a').forEach(function (a) { a.addEventListener('click', CC.ui.cerrarModal); });
     });
   }
@@ -167,7 +192,10 @@
     });
 
     // Tema
-    document.getElementById('btnTema').addEventListener('click', CC.ui.ciclarTema);
+    document.addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('[data-tema]') : null;
+      if (b) CC.ui.aplicarTema(b.getAttribute('data-tema'));
+    });
 
     // Menú completo en el celular
     var mas = document.getElementById('btnMas');
@@ -180,16 +208,30 @@
     // Los recargos se ponen al día solos con cada cambio (un pago registrado tarde, por ejemplo)
     CC.Store.alCambiar(function () { CC.Model.aplicarRecargos(); });
     CC.Store.alCambiar(function () { dibujar(); });
+    // Si se dio de alta el primer usuario (o se dio de baja el que estaba dentro), se pide entrar
+    CC.Store.alCambiar(function () { CC.Sesion.pintarPuerta(); });
+
+    // Lo que el sistema no deja hacer (un mes cerrado, algo que solo hace el comité)
+    // se dice en un aviso, no en un error escondido
+    function avisarBloqueo(err) {
+      if (!err || !err.bloqueo) return false;
+      CC.ui.toast(err.message, 'crit');
+      return true;
+    }
+    window.addEventListener('error', function (e) { if (avisarBloqueo(e.error)) e.preventDefault(); });
+    window.addEventListener('unhandledrejection', function (e) { if (avisarBloqueo(e.reason)) e.preventDefault(); });
   }
 
   /* ---------- Arranque ---------- */
   function iniciar() {
     CC.ui.aplicarTema(CC.ui.leerTema());
+    CC.ui.aplicarLetra(CC.ui.leerLetra());
     CC.Store.iniciar();
     CC.Model.aplicarRecargos();
     ruta = leerHash();
     conectar();
     dibujar();
+    CC.Sesion.pintarPuerta();
   }
 
   if (document.readyState === 'loading') {

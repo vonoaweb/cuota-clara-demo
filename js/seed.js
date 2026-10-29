@@ -299,7 +299,7 @@ CC.Seed = (function () {
       gastos: [],
       avisos: [],
       categorias: CATEGORIAS.map(function (x) {
-        return { id: CC.Store.nuevoId('cat'), nombre: x[0], presupuesto: 0, proveedor: '' };
+        return { id: CC.Store.nuevoId('cat'), nombre: x[0], presupuesto: 0, proveedor: '', grupo: x[3] || 'variable' };
       }),
       recibos: [],
       notas: [],
@@ -316,6 +316,27 @@ CC.Seed = (function () {
         demo: false, folioRecibo: 0, folioPago: 0, folioCaja: 0, folioConvenio: 0,
         creado: new Date().toISOString(), actualizado: new Date().toISOString()
       }
+    };
+  }
+
+  /**
+   * Con lo que arranca el programa de un condominio real (perfil con produccion):
+   * sus reglas, que dijeron en la reunión (cuota, día de pago, recargos), y nada
+   * inventado. Lo demás lo capturan ellos en Primeros pasos.
+   */
+  function condominioInicial() {
+    var c = P.condominio || {};
+    return {
+      nombre: c.nombre || '', ciudad: c.ciudad || '',
+      diaVencimiento: c.diaVencimiento || 10,
+      recargoModo: c.recargoModo || 'ninguno',
+      recargoTramos: c.recargoTramos || [],
+      tasaMoraMensual: c.tasaMoraMensual || 0,
+      fondoReservaPct: 0, mesesGratisAnualidad: 0,
+      registroVisitas: !!c.registroVisitas,
+      presupuestoMensual: 0, saldoInicialCaja: 0,
+      cuotaCasa: P.cuotaFija || 0,
+      casasPrevistas: P.calles && P.calles.length === 1 ? (P.casasPorCalle || 0) : 0
     };
   }
 
@@ -916,5 +937,5 @@ CC.Seed = (function () {
     };
   }
 
-  return { construir: construir, vacio: vacio, SEMILLA: SEMILLA };
+  return { construir: construir, vacio: vacio, condominioInicial: condominioInicial, SEMILLA: SEMILLA };
 })();
